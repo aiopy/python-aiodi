@@ -36,7 +36,7 @@ jobs:
         run: sh pyscript.sh clean
 
   CD:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     needs: CI
     timeout-minutes: 15
     runs-on: ${{ matrix.os }}
