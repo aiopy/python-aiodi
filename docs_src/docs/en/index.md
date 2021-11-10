@@ -1,20 +1,16 @@
 # Python Dependency Injection library
 
-aiodi is a Container for the Dependency Injection in Python.
+## Requirements
+
+- Python 3.6+
 
 ## Installation
 
-Use the package manager [pip](https://pypi.org/project/aiodi/) to install aiodi.
-
-```bash
-pip install aiodi
+```shell
+python3 -m pip install aiodi
 ```
 
-## Documentation
-
-- Visit [aiodi docs](https://ticdenis.github.io/python-aiodi/).
-
-## Usage
+## Example
 
 ```python
 from abc import ABC, abstractmethod
@@ -103,16 +99,9 @@ if __name__ == '__main__':
 
 ```
 
-## Requirements
-
-- Python >= 3.6
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
-
 ## License
 
 [MIT](https://github.com/ticdenis/python-aiodi/blob/master/LICENSE)
+
+
+### WIP
