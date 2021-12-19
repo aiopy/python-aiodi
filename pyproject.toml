@@ -13,7 +13,7 @@ include = ["LICENSE", "README.md"]
 
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools==58.5.3", "wheel==0.37.0"]
+requires = ["setuptools==59.7.0", "wheel==0.37.0"]
 
 [tool.black]
 include = '\.pyi?$'
@@ -50,3 +50,29 @@ skipsdist = True
 [testenv]
 deps = -r requirements-dev.txt
 """
+
+### ...
+
+[tool.aiodi.variables]
+name = "%env(str:APP_NAME, 'myapp')%"
+version = "%env(int:APP_VERSION, '10')%"
+log_level = "%env(APP_LEVEL, 'INFO')%"
+
+[tool.aiodi.services."logging.Logger"]
+class = "sample.utils.get_simple_logger"
+arguments = { name = "%var(name)%", level = "%var(log_level)%" }
+
+[tool.aiodi.services."sample.blabla.log.GreetTo"]
+[tool.aiodi.services."sample.blabla.log.GreetToWithLogger"]
+
+[tool.aiodi.services."sample.libs.users"]
+_defaults = { autoregistration = { resource = "sample/libs/users" } }
+
+[tool.aiodi.services."sample.libs.users.application"]
+_defaults = { autoregistration = { resource = "sample/libs/users/application" } }
+
+# next:
+#[tool.aiodi.services."sample.libs.users.application.*"]
+#_defaults = { autoregistration = { resource = "sample/libs/users/application/*" } }
+#_defaults = { autoregistration = { resource = "sample/libs/users/application/*", exclude: "sample/users/{MyFromUserService,domain/User}" } }
+# exclude: '../src/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'

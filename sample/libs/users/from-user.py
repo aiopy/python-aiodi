@@ -1,0 +1,2 @@
+class MyFromUserService:
+    pass

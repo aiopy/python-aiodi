@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from pytoml import load
+from toml import load
 
 with open('pyproject.toml', 'rb') as file:
     metadata = load(file)['metadata']
