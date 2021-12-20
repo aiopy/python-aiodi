@@ -1,3 +1,4 @@
+from abc import ABC
 from inspect import Parameter, signature
 from os import getenv
 from pathlib import Path
@@ -42,7 +43,7 @@ _DEFAULTS = {
     'VARIABLE_KEY': 'env',
 }
 
-_VARIABLE_METADATA_REGEX = r"%(static|env|var)\((str:|int:|float:|bool:)?([\w]+)(,\s?'[\w\s]+')?\)%"
+_VARIABLE_METADATA_REGEX = r"%(static|env|var)\((str:|int:|float:|bool:)?([\w]+)(,\s{1}'.*?')?\)%"
 
 _VariableMatchMetadata = NamedTuple(
     '_VariableMatchMetadata', source_kind=str, type=Type[Any], source_name=str, default=Any, match=Match
@@ -129,7 +130,7 @@ class ContainerBuilder:
     _services_defaults: _ServiceDefaults
 
     def __init__(
-        self, filenames: List[str] = [], *, debug: bool = False, tool_key: str = 'aiodi', var_key: str = 'env'
+            self, filenames: List[str] = [], *, debug: bool = False, tool_key: str = 'aiodi', var_key: str = 'env'
     ) -> None:
         self._debug = debug
 
@@ -177,7 +178,7 @@ class ContainerBuilder:
         variables = dict(
             [(key, (self._get_variable_metadata(key=key, val=val), 0)) for key, val in raw_variables.items()]
         )
-        variable_limit_retries = len(variables.keys())
+        variable_limit_retries = pow(len(variables.keys()), 2)
         while len(variables.keys()) > 0:
             try:
                 self._parse_variables(variables=variables)
@@ -222,7 +223,7 @@ class ContainerBuilder:
                     match=match,
                 )
                 for match in cls._find_variable_metadata_matches(val=val)
-                or cls._find_variable_metadata_matches(
+                             or cls._find_variable_metadata_matches(
                     val="%static({0}:{1}, '{2}')%".format(type(val).__name__, key, val)
                 )
             ],
@@ -247,49 +248,60 @@ class ContainerBuilder:
                 typ_val = self._variables.get(metadata.source_name, metadata.default)
             # concatenate right side content per iteration
             values += (
-                variable_metadata.value[
-                    0 if idx == 0 else variable_metadata.matches[idx - 1].match.end() : metadata.match.start()
-                ]
-                + typ_val
+                    variable_metadata.value[
+                    0 if idx == 0 else variable_metadata.matches[idx - 1].match.end(): metadata.match.start()
+                    ]
+                    + typ_val
             )
             # concatenate static content in last iteration
             if (len(variable_metadata) - 1) == idx:
-                values += variable_metadata.value[metadata.match.end() :]
+                values += variable_metadata.value[metadata.match.end():]
         value: Any = ''.join(values)
         if len(variable_metadata.matches) == 1:
             value = variable_metadata.matches[0].type(value)
         return value
 
+    def _get_service_metadata_from_autoload(self, name: str, defaults: _ServiceDefaults) -> _ServiceMetadata:
+        return self._get_service_metadata(
+            key=name,
+            val={
+                'type': name,
+                'class': name,
+                'arguments': {},
+                '_defaults': {},
+            },
+            defaults=_ServiceDefaults(
+                autowire=defaults.autowire,
+                autoconfigure=defaults.autoconfigure,
+                autoregistration={},
+            ),
+        )
+
     def _parse_services_wrapper(self, raw_services: Dict[str, Any]) -> None:
         services: Dict[str, Tuple[_ServiceMetadata, int]] = {}
         for key, val in raw_services.items():
             defaults = self._get_service_defaults(val=val)
-            resource = defaults.autoregistration['resource'] or ''
-            if resource and not resource.endswith('/*'):
-                for name, _ in import_module_and_get_attrs(name=resource.replace('/', '.')).items():
+            resource = (defaults.autoregistration['resource'] or '').replace('/', '.')
+            if resource:
+                names: List[str] = []
+                # autoload all packages until (inclusive) module given
+                if resource.endswith('.*'):
+                    pass
+                # autoload all packages of module given
+                else:
+                    names = [
+                        name
+                        for name, mod in import_module_and_get_attrs(name=resource).items()
+                        if not mod.__mro__[1:][0] is ABC  # avoid loading interfaces (1st level)
+                    ]
+                for name in names:
                     services.setdefault(
                         name,
-                        (
-                            self._get_service_metadata(
-                                key=name,
-                                val={
-                                    'type': name,
-                                    'class': name,
-                                    'arguments': {},
-                                    '_defaults': {},
-                                },
-                                defaults=_ServiceDefaults(
-                                    autowire=defaults.autowire,
-                                    autoconfigure=defaults.autoconfigure,
-                                    autoregistration={},
-                                ),
-                            ),
-                            0,
-                        ),
+                        (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
                     )
             else:
                 services.setdefault(key, (self._get_service_metadata(key=key, val=val, defaults=defaults), 0))
-        service_limit_retries = len(services.keys())
+        service_limit_retries = pow(len(services.keys()), 2)
         while len(services.keys()) > 0:
             try:
                 self._parse_services(services=services)
