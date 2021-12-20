@@ -289,6 +289,7 @@ class ContainerBuilder:
                     pass
                 # autoload all packages of module given
                 else:
+                    # TODO: Work here
                     names = [
                         name
                         for name, mod in import_module_and_get_attrs(name=resource).items()
