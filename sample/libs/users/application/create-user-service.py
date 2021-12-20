@@ -15,3 +15,4 @@ class CreateSuperUserService:
 
     def __call__(self, *args) -> None:
         self._logger.info('From CreateSuperUserService', *args)
+

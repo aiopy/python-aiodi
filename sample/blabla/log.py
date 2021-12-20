@@ -6,9 +6,11 @@ class GreetTo(ABC):
     def __call__(self, who: str) -> None:
         pass
 
+
 class GreetToWithPrint(GreetTo):
     def __call__(self, who: str) -> None:
         print('Hello ' + who)
+
 
 class GreetToWithLogger(GreetTo):
     _logger: Logger

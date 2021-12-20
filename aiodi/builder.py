@@ -284,7 +284,7 @@ class ContainerBuilder:
             resource = (defaults.autoregistration['resource'] or '').replace('/', '.')
             if resource:
                 names: List[str] = []
-                # autoload all packages until (inclusive) module given
+                # autoload all forward packages until (inclusive) module given
                 if resource.endswith('.*'):
                     pass
                 # autoload all packages of module given
@@ -429,7 +429,7 @@ class ContainerBuilder:
                 if len(services) == 1:
                     param_val = services[0]
                 else:
-                    raise ServiceNotFound(name=service_metadata.name)
+                    raise ServiceResolutionPostponed(key=param_val[1:], value=service_metadata, times=retries + 1)
             # cast primitive value
             if param_val is not None and is_primitive(param.type):
                 param_val = param.type(param_val)
