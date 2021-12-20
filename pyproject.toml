@@ -65,8 +65,8 @@ arguments = { name = "%var(name)%", level = "%var(log_level)%" }
 [tool.aiodi.services."sample.blabla.log.GreetTo"]
 [tool.aiodi.services."sample.blabla.log.GreetToWithLogger"]
 
-[tool.aiodi.services."sample.libs.users"]
-_defaults = { autoregistration = { resource = "sample/libs/users" } }
+#[tool.aiodi.services."sample.libs.users"]
+#_defaults = { autoregistration = { resource = "sample/libs/users" } }
 
 [tool.aiodi.services."sample.libs.users.application"]
 _defaults = { autoregistration = { resource = "sample/libs/users/application" } }
