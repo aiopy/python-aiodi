@@ -70,9 +70,4 @@ _defaults = { autoregistration = { resource = "sample/libs/users" } }
 
 [tool.aiodi.services."sample.libs.users.application"]
 _defaults = { autoregistration = { resource = "sample/libs/users/application" } }
-
-# next:
-#[tool.aiodi.services."sample.libs.users.application.*"]
-#_defaults = { autoregistration = { resource = "sample/libs/users/application/*" } }
-#_defaults = { autoregistration = { resource = "sample/libs/users/application/*", exclude: "sample/users/{MyFromUserService,domain/User}" } }
-# exclude: '../src/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+#_defaults = { autoregistration = { resource = "sample/libs/users/application/*", exclude = "sample/libs/users/{MyFromUserService,domain/User,infra/infra.py}" } }

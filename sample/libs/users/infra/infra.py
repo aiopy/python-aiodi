@@ -1,0 +1,2 @@
+class UserInfra:
+    pass
