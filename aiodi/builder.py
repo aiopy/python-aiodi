@@ -330,18 +330,16 @@ class ContainerBuilder:
                             [exclude_metadata.left] if len(exclude_metadata.right) == 0 else exclude_metadata.right
 
                 names: List[str] = []
-                # autoload all forward packages until (inclusive) module given
-                if resource.endswith('.*'):
-                    pass
-                # autoload all packages of module given
-                else:
-                    # TODO: Work here
-                    names = [
+                resources: List[str] = [resource]
+                if resource.endswith('/*'):
+                    resources = glob(defaults.project_dir + '/' + resource)
+                for include in resources:
+                    names += [
                         name
-                        for name, mod in import_module_and_get_attrs(name=resource, excludes=excludes).items()
+                        for name, mod in import_module_and_get_attrs(name=include, excludes=excludes).items()
                         if not mod.__mro__[1:][0] is ABC  # avoid loading interfaces (1st level)
                     ]
-                for name in names:
+                for name in set(names):
                     services.setdefault(
                         name,
                         (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
