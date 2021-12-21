@@ -41,10 +41,12 @@ def import_module_and_get_attr(name: str) -> typing.Type[typing.Any]:
 def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) -> typing.Dict[str, ModuleType]:
     package = import_module(name=path.replace('/', '.'))
 
+    exclude_paths = [str(exclude) for exclude in excludes]
     includes: typing.List[typing.Tuple[Path, str, bool]] = []
     for file_finder, name, is_pkg in walk_packages(path=package.__path__):
         include = Path(file_finder.path)
-        if not is_pkg and (str(Path(file_finder.path)) + '/' + name + '.py') in [str(exclude) for exclude in excludes]:
+        include_absolute_path = str(Path(file_finder.path)) + '/' + name + ('' if is_pkg else '.py')
+        if include_absolute_path in exclude_paths:
             continue
         includes.append((include, name, is_pkg))
 
