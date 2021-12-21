@@ -182,7 +182,7 @@ class ContainerBuilder:
             project_dir=str(svc_defaults['project_dir']) if 'project_dir' in svc_defaults else None,
             autowire=bool(svc_defaults['autowire']) if 'autowire' in svc_defaults else False,
             autoconfigure=bool(svc_defaults['autoconfigure']) if 'autoconfigure' in svc_defaults else False,
-            autoregistration=svc_defaults['autoregistration'] if 'autoregistration' in svc_defaults else False,
+            autoregistration=svc_defaults['autoregistration'] if 'autoregistration' in svc_defaults else _DEFAULTS['SERVICE_DEFAULTS']['autoregistration'],
         )
         del raw.get('services')['_defaults']
 
@@ -396,9 +396,7 @@ class ContainerBuilder:
     def _get_service_defaults(self, val: Any) -> _ServiceDefaults:
         has_defaults = isinstance(val, dict) and '_defaults' in val
         if has_defaults:
-            val['_defaults'].setdefault('project_dir',
-                                        self._services_defaults.project_dir if self._services_defaults.autoconfigure else None
-                                        )
+            val['_defaults'].setdefault('project_dir', self._services_defaults.project_dir)
             val['_defaults'].setdefault('autoconfigure', False)
             val['_defaults'].setdefault(
                 'autowire', self._services_defaults.autowire if self._services_defaults.autoconfigure else False

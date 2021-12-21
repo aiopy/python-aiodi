@@ -4,7 +4,7 @@ from aiodi.builder import ContainerBuilder
 
 
 def main() -> None:
-    container = ContainerBuilder(debug=True).load()
+    container = ContainerBuilder(filenames=['../pyproject.toml'], debug=True).load()
     pprint(container, indent=4, width=120)
 
 
