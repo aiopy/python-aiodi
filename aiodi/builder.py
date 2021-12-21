@@ -1,4 +1,5 @@
 from abc import ABC
+from glob import glob
 from inspect import Parameter, signature
 from os import getenv
 from pathlib import Path
@@ -32,6 +33,7 @@ _DEFAULTS = {
     ],
     'SERVICE': ...,
     'SERVICE_DEFAULTS': {
+        'project_dir': None,
         'autowire': True,
         'autoconfigure': True,
         'autoregistration': {
@@ -57,6 +59,7 @@ _VariableMetadata = NamedTuple(
 
 _ServiceDefaults = NamedTuple(
     '_ServiceDefaults',
+    project_dir=Optional[str],
     autowire=bool,
     autoconfigure=bool,
     autoregistration=Dict[str, Optional[str]],
@@ -76,6 +79,14 @@ _ServiceMetadata = NamedTuple(
     arguments=Dict[str, Any],
     params=List[_ServiceParameterMetadata],
     defaults=_ServiceDefaults,
+)
+
+_SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX = r"^([.\w/]+)?({[\w/.*,]+})?$"
+
+_ServiceExcludeMetadata = NamedTuple(
+    '_ServiceExcludeMetadata',
+    left=str,
+    right=List[str],
 )
 
 
@@ -141,10 +152,14 @@ class ContainerBuilder:
             from toml import load
 
             for filename in filenames:
-                if Path(filename).exists():
+                filepath = Path(filename)
+                if filepath.is_file() and filepath.exists():
                     raw = load(filename)
                     data = raw.get('tool', {tool_key: {'variables': {}, 'services': {}}}).get(tool_key)
                     data.get('services').setdefault('_defaults', _DEFAULTS['SERVICE_DEFAULTS'])
+                    project_dir = data.get('services').get('_defaults').get('project_dir')
+                    if project_dir is None or len(project_dir) == 0:
+                        data.get('services').get('_defaults')['project_dir'] = str(filepath.absolute().parent.resolve())
                     return data
 
             raise FileNotFoundError('Missing file to load dependencies')
@@ -164,6 +179,7 @@ class ContainerBuilder:
 
         svc_defaults = raw.get('services').get('_defaults')
         self._services_defaults = _ServiceDefaults(
+            project_dir=str(svc_defaults['project_dir']) if 'project_dir' in svc_defaults else None,
             autowire=bool(svc_defaults['autowire']) if 'autowire' in svc_defaults else False,
             autoconfigure=bool(svc_defaults['autoconfigure']) if 'autoconfigure' in svc_defaults else False,
             autoregistration=svc_defaults['autoregistration'] if 'autoregistration' in svc_defaults else False,
@@ -271,18 +287,48 @@ class ContainerBuilder:
                 '_defaults': {},
             },
             defaults=_ServiceDefaults(
+                project_dir=defaults.project_dir,
                 autowire=defaults.autowire,
                 autoconfigure=defaults.autoconfigure,
                 autoregistration={},
             ),
         )
 
+    @staticmethod
+    def _find_service_exclude_matches(val: Any) -> List[Match]:
+        return list((finditer(_SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX, val) if isinstance(val, str) else {}) or {})
+
+    def _get_service_exclude_metadata(self, raw_exclude: str, project_dir: str) -> Optional[_ServiceExcludeMetadata]:
+        exclude_matches = self._find_service_exclude_matches(val=raw_exclude)
+        if len(exclude_matches) == 0:
+            return None
+        exclude_groups = exclude_matches[0].groups()
+        left = project_dir if exclude_groups[0] is None else project_dir + '/' + exclude_groups[0]
+        left = '/'.join(list(Path(str(Path(left).absolute()).replace('../', '')).parts[-len(Path(left).parts):]))[1:]
+        rights: List[str] = []
+        for right in ('{}' if exclude_groups[1] is None else exclude_groups[1])[1:-1].split(','):
+            rights += glob(left + '/' + right)
+        return _ServiceExcludeMetadata(
+            left=left,
+            right=list(set(rights)),
+        )
+
     def _parse_services_wrapper(self, raw_services: Dict[str, Any]) -> None:
         services: Dict[str, Tuple[_ServiceMetadata, int]] = {}
         for key, val in raw_services.items():
             defaults = self._get_service_defaults(val=val)
-            resource = (defaults.autoregistration['resource'] or '').replace('/', '.')
+            resource = (defaults.autoregistration['resource'] or '')
             if resource:
+                excludes: List[str] = []
+                if defaults.autoregistration['exclude'] or '':
+                    exclude_metadata = self._get_service_exclude_metadata(
+                        raw_exclude=(defaults.autoregistration['exclude'] or ''),
+                        project_dir=defaults.project_dir
+                    )
+                    if exclude_metadata:
+                        excludes = \
+                            [exclude_metadata.left] if len(exclude_metadata.right) == 0 else exclude_metadata.right
+
                 names: List[str] = []
                 # autoload all forward packages until (inclusive) module given
                 if resource.endswith('.*'):
@@ -292,7 +338,7 @@ class ContainerBuilder:
                     # TODO: Work here
                     names = [
                         name
-                        for name, mod in import_module_and_get_attrs(name=resource).items()
+                        for name, mod in import_module_and_get_attrs(name=resource, excludes=excludes).items()
                         if not mod.__mro__[1:][0] is ABC  # avoid loading interfaces (1st level)
                     ]
                 for name in names:
@@ -350,6 +396,9 @@ class ContainerBuilder:
     def _get_service_defaults(self, val: Any) -> _ServiceDefaults:
         has_defaults = isinstance(val, dict) and '_defaults' in val
         if has_defaults:
+            val['_defaults'].setdefault('project_dir',
+                                        self._services_defaults.project_dir if self._services_defaults.autoconfigure else None
+                                        )
             val['_defaults'].setdefault('autoconfigure', False)
             val['_defaults'].setdefault(
                 'autowire', self._services_defaults.autowire if self._services_defaults.autoconfigure else False

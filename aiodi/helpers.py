@@ -1,5 +1,8 @@
 import typing
+from glob import glob
 from importlib import import_module
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
 from pkgutil import walk_packages
 from types import ModuleType
 
@@ -28,26 +31,44 @@ def is_optional(field: typing.Any) -> bool:  # pragma: no cover
 
 
 def import_module_and_get_attr(name: str) -> typing.Type[typing.Any]:
+    name = name.replace('/', '.')
     mod = '.'.join(name.split('.')[:-1])
     svc = name.split('.')[-1]
     globals()[mod] = import_module(name=mod)
     return getattr(globals()[mod], svc)
 
 
-def _import_submodules(name: str, recursive: bool = True) -> typing.Dict[str, ModuleType]:
-    package = import_module(name=name)
+def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) -> typing.Dict[str, ModuleType]:
+    package = import_module(name=path.replace('/', '.'))
+
+    includes: typing.List[typing.Tuple[Path, str, bool]] = []
+    for file_finder, name, is_pkg in walk_packages(path=package.__path__):
+        include = Path(file_finder.path)
+        if not is_pkg and (str(Path(file_finder.path)) + '/' + name + '.py') in [str(exclude) for exclude in excludes]:
+            continue
+        includes.append((include, name, is_pkg))
+
     results: typing.Dict[str, ModuleType] = {}
-    for loader, name, is_pkg in walk_packages(package.__path__):
+    for include, name, is_pkg in includes:
         full_name = package.__name__ + '.' + name
-        results[full_name] = import_module(full_name)
+        results[full_name] = import_module(name=full_name)
         if recursive and is_pkg:
-            results.update(_import_submodules(full_name))
+            results.update(_import_submodules(path=full_name.replace('.', '/'), recursive=recursive, excludes=excludes))
     return results
 
 
-def import_module_and_get_attrs(name: str, recursive: bool = True) -> typing.Dict[str, typing.Type[typing.Any]]:
+def import_module_and_get_attrs(
+        name: str,
+        *,
+        recursive: bool = True,
+        excludes: typing.List[str] = []
+) -> typing.Dict[str, typing.Type[typing.Any]]:
     results: typing.Dict[str, typing.Type[typing.Any]] = {}
-    for name, module in _import_submodules(name=name, recursive=recursive).items():
+    for name, module in _import_submodules(
+            path='/'.join(list(Path(str(Path(name).absolute()).replace('../', '')).parts[-len(Path(name).parts):])),
+            recursive=recursive,
+            excludes=[Path(exclude) for exclude in excludes if Path(exclude).exists()]
+    ).items():
         for key, svc in module.__dict__.items():
             if hasattr(svc, '__module__') and svc.__module__ == name:
                 full_name = svc.__module__ + '.' + svc.__name__
