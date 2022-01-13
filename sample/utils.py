@@ -1,5 +1,5 @@
 from logging import Logger, Formatter, StreamHandler, getLogger, NOTSET
-from typing import Optional, Union
+from typing import Union
 
 
 def get_simple_logger(

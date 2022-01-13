@@ -332,7 +332,12 @@ class ContainerBuilder:
                 names: List[str] = []
                 resources: List[str] = [resource]
                 if resource.endswith('/*'):
-                    resources = glob(defaults.project_dir + '/' + resource)
+                    resources = [
+                        include.replace(defaults.project_dir + '/', '', 1)
+                        for include in glob(defaults.project_dir + '/' + resource)
+                        if not include.endswith('__pycache__')
+                    ]
+
                 for include in resources:
                     names += [
                         name
@@ -345,7 +350,10 @@ class ContainerBuilder:
                         (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
                     )
             else:
-                services.setdefault(key, (self._get_service_metadata(key=key, val=val, defaults=defaults), 0))
+                metadata = self._get_service_metadata(key=key, val=val, defaults=defaults)
+                if metadata.type.__mro__[1:][0] is ABC:
+                    raise TypeError('Can not instantiate abstract class <{0}>!'.format(metadata.name))
+                services.setdefault(key, (metadata, 0))
         service_limit_retries = pow(len(services.keys()), 2)
         while len(services.keys()) > 0:
             try:

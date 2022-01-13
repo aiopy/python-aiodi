@@ -1,7 +1,5 @@
 import typing
-from glob import glob
 from importlib import import_module
-from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from pkgutil import walk_packages
 from types import ModuleType
@@ -38,19 +36,29 @@ def import_module_and_get_attr(name: str) -> typing.Type[typing.Any]:
     return getattr(globals()[mod], svc)
 
 
+def _types_in_module(module: ModuleType) -> typing.List[typing.Type[typing.Any]]:
+    items = module.__dict__
+    return [items[key] for key in items if (isinstance(items[key], type) and items[key].__module__ == module.__name__)]
+
+
 def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) -> typing.Dict[str, ModuleType]:
-    package = import_module(name=path.replace('/', '.'))
+    full_name = path.replace('/', '.').replace('.py', '', 1)
+    package = import_module(name=full_name)
 
     exclude_paths = [str(exclude) for exclude in excludes]
     includes: typing.List[typing.Tuple[Path, str, bool]] = []
-    for file_finder, name, is_pkg in walk_packages(path=package.__path__):
-        include = Path(file_finder.path)
-        include_absolute_path = str(Path(file_finder.path)) + '/' + name + ('' if is_pkg else '.py')
-        if include_absolute_path in exclude_paths:
-            continue
-        includes.append((include, name, is_pkg))
-
     results: typing.Dict[str, ModuleType] = {}
+
+    if hasattr(package, '__path__'):
+        for file_finder, name, is_pkg in walk_packages(path=package.__path__):
+            include = Path(file_finder.path)
+            include_absolute_path = str(Path(file_finder.path)) + '/' + name + ('' if is_pkg else '.py')
+            if include_absolute_path in exclude_paths:
+                continue
+            includes.append((include, name, is_pkg))
+    else:
+        results[full_name] = package
+
     for include, name, is_pkg in includes:
         full_name = package.__name__ + '.' + name
         results[full_name] = import_module(name=full_name)
@@ -66,8 +74,9 @@ def import_module_and_get_attrs(
         excludes: typing.List[str] = []
 ) -> typing.Dict[str, typing.Type[typing.Any]]:
     results: typing.Dict[str, typing.Type[typing.Any]] = {}
+    path = '/'.join(list(Path(str(Path(name).absolute()).replace('../', '')).parts[-len(Path(name).parts):]))
     for name, module in _import_submodules(
-            path='/'.join(list(Path(str(Path(name).absolute()).replace('../', '')).parts[-len(Path(name).parts):])),
+            path=path[1:] if path.startswith('//') else path,
             recursive=recursive,
             excludes=[Path(exclude) for exclude in excludes if Path(exclude).exists()]
     ).items():
