@@ -68,5 +68,5 @@ arguments = { name = "%var(name)%", level = "%var(log_level)%" }
 _defaults = { autoregistration = { resource = "sample/libs/users" } }
 
 [tool.aiodi.services."sample.libs.users.infra"]
-_defaults = { autoregistration = { resource = "sample/libs/users/infra", exclude = "sample/libs/users/{infra/subinfra,infra/something.py,infra/*command.py}" } }
-#_defaults = { autoregistration = { resource = "sample/libs/*", exclude = "sample/libs/users/{domain,infra/something.py,infra/*command.py}" } }
+#_defaults = { autoregistration = { resource = "sample/libs/users/infra", exclude = "sample/libs/users/{infra/subinfra,infra/something.py,infra/*command.py}" } }
+_defaults = { autoregistration = { resource = "sample/libs/*", exclude = "sample/libs/users/{domain,infra/something.py,infra/*command.py}" } }

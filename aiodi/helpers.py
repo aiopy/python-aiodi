@@ -68,17 +68,14 @@ def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) 
 
 
 def import_module_and_get_attrs(
-        name: str,
-        *,
-        recursive: bool = True,
-        excludes: typing.List[str] = []
+    name: str, *, recursive: bool = True, excludes: typing.List[str] = []
 ) -> typing.Dict[str, typing.Type[typing.Any]]:
     results: typing.Dict[str, typing.Type[typing.Any]] = {}
-    path = '/'.join(list(Path(str(Path(name).absolute()).replace('../', '')).parts[-len(Path(name).parts):]))
+    path = '/'.join(list(Path(str(Path(name).absolute()).replace('../', '')).parts[-len(Path(name).parts) :]))
     for name, module in _import_submodules(
-            path=path[1:] if path.startswith('//') else path,
-            recursive=recursive,
-            excludes=[Path(exclude) for exclude in excludes if Path(exclude).exists()]
+        path=path[1:] if path.startswith('//') else path,
+        recursive=recursive,
+        excludes=[Path(exclude) for exclude in excludes if Path(exclude).exists()],
     ).items():
         for key, svc in module.__dict__.items():
             if hasattr(svc, '__module__') and svc.__module__ == name:

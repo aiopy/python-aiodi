@@ -141,7 +141,7 @@ class ContainerBuilder:
     _services_defaults: _ServiceDefaults
 
     def __init__(
-            self, filenames: List[str] = [], *, debug: bool = False, tool_key: str = 'aiodi', var_key: str = 'env'
+        self, filenames: List[str] = [], *, debug: bool = False, tool_key: str = 'aiodi', var_key: str = 'env'
     ) -> None:
         self._debug = debug
 
@@ -149,12 +149,26 @@ class ContainerBuilder:
             filenames = _DEFAULTS['FILENAMES']
 
         def _raw_load() -> MutableMapping[str, Any]:
+            from os.path import abspath, dirname
+            from sys import argv
+
             from toml import load
 
+            cwd = Path(abspath(dirname(argv[0])))
+
             for filename in filenames:
-                filepath = Path(filename)
+                relative_parts_to_removed = len(([part for part in Path(filename).parts if part == '..']))
+                filepath = Path(
+                    '/'.join(
+                        [
+                            *(cwd.parts if relative_parts_to_removed == 0 else cwd.parts[:-relative_parts_to_removed]),
+                            *Path(filename).parts[relative_parts_to_removed:],
+                        ]
+                    )
+                )
+
                 if filepath.is_file() and filepath.exists():
-                    raw = load(filename)
+                    raw = load(str(filepath))
                     data = raw.get('tool', {tool_key: {'variables': {}, 'services': {}}}).get(tool_key)
                     data.get('services').setdefault('_defaults', _DEFAULTS['SERVICE_DEFAULTS'])
                     project_dir = data.get('services').get('_defaults').get('project_dir')
@@ -182,7 +196,9 @@ class ContainerBuilder:
             project_dir=str(svc_defaults['project_dir']) if 'project_dir' in svc_defaults else None,
             autowire=bool(svc_defaults['autowire']) if 'autowire' in svc_defaults else False,
             autoconfigure=bool(svc_defaults['autoconfigure']) if 'autoconfigure' in svc_defaults else False,
-            autoregistration=svc_defaults['autoregistration'] if 'autoregistration' in svc_defaults else _DEFAULTS['SERVICE_DEFAULTS']['autoregistration'],
+            autoregistration=svc_defaults['autoregistration']
+            if 'autoregistration' in svc_defaults
+            else _DEFAULTS['SERVICE_DEFAULTS']['autoregistration'],
         )
         del raw.get('services')['_defaults']
 
@@ -239,7 +255,7 @@ class ContainerBuilder:
                     match=match,
                 )
                 for match in cls._find_variable_metadata_matches(val=val)
-                             or cls._find_variable_metadata_matches(
+                or cls._find_variable_metadata_matches(
                     val="%static({0}:{1}, '{2}')%".format(type(val).__name__, key, val)
                 )
             ],
@@ -264,14 +280,14 @@ class ContainerBuilder:
                 typ_val = self._variables.get(metadata.source_name, metadata.default)
             # concatenate right side content per iteration
             values += (
-                    variable_metadata.value[
-                    0 if idx == 0 else variable_metadata.matches[idx - 1].match.end(): metadata.match.start()
-                    ]
-                    + typ_val
+                variable_metadata.value[
+                    0 if idx == 0 else variable_metadata.matches[idx - 1].match.end() : metadata.match.start()
+                ]
+                + typ_val
             )
             # concatenate static content in last iteration
             if (len(variable_metadata) - 1) == idx:
-                values += variable_metadata.value[metadata.match.end():]
+                values += variable_metadata.value[metadata.match.end() :]
         value: Any = ''.join(values)
         if len(variable_metadata.matches) == 1:
             value = variable_metadata.matches[0].type(value)
@@ -304,7 +320,7 @@ class ContainerBuilder:
             return None
         exclude_groups = exclude_matches[0].groups()
         left = project_dir if exclude_groups[0] is None else project_dir + '/' + exclude_groups[0]
-        left = '/'.join(list(Path(str(Path(left).absolute()).replace('../', '')).parts[-len(Path(left).parts):]))[1:]
+        left = '/'.join(list(Path(str(Path(left).absolute()).replace('../', '')).parts[-len(Path(left).parts) :]))[1:]
         rights: List[str] = []
         for right in ('{}' if exclude_groups[1] is None else exclude_groups[1])[1:-1].split(','):
             rights += glob(left + '/' + right)
@@ -317,17 +333,17 @@ class ContainerBuilder:
         services: Dict[str, Tuple[_ServiceMetadata, int]] = {}
         for key, val in raw_services.items():
             defaults = self._get_service_defaults(val=val)
-            resource = (defaults.autoregistration['resource'] or '')
+            resource = defaults.autoregistration['resource'] or ''
             if resource:
                 excludes: List[str] = []
                 if defaults.autoregistration['exclude'] or '':
                     exclude_metadata = self._get_service_exclude_metadata(
-                        raw_exclude=(defaults.autoregistration['exclude'] or ''),
-                        project_dir=defaults.project_dir
+                        raw_exclude=(defaults.autoregistration['exclude'] or ''), project_dir=defaults.project_dir
                     )
                     if exclude_metadata:
-                        excludes = \
+                        excludes = (
                             [exclude_metadata.left] if len(exclude_metadata.right) == 0 else exclude_metadata.right
+                        )
 
                 names: List[str] = []
                 resources: List[str] = [resource]
@@ -346,8 +362,7 @@ class ContainerBuilder:
                     ]
                 for name in set(names):
                     services.setdefault(
-                        name,
-                        (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
+                        name, (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
                     )
             else:
                 metadata = self._get_service_metadata(key=key, val=val, defaults=defaults)
