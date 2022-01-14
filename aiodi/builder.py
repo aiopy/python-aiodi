@@ -216,9 +216,6 @@ class ContainerBuilder:
         while len(variables.keys()) > 0:
             try:
                 self._parse_variables(variables=variables)
-                for key in self._variables.keys():
-                    if key in variables.keys():
-                        del variables[key]
             except VariableResolutionPostponed as err:
                 if self._debug:
                     logger.debug(err.__str__())
@@ -226,8 +223,13 @@ class ContainerBuilder:
                     raise InterruptedError(
                         'Reached limit of retries ({0}) per variable <{1}>!'.format(variable_limit_retries, err.key())
                     )
-                del variables[err.key()]
-                variables[err.key()] = (err.value(), err.times())
+                if err.key() in variables:
+                    del variables[err.key()]
+                variables = {err.key(): (err.value(), err.times()), **variables}
+            finally:
+                for key in self._variables.keys():
+                    if key in variables.keys():
+                        del variables[key]
 
     def _parse_variables(self, variables: Dict[str, Tuple[_VariableMetadata, int]]) -> None:
         for name, (metadata, times) in variables.items():
@@ -362,14 +364,12 @@ class ContainerBuilder:
                         if not mod.__mro__[1:][0] is ABC  # avoid loading interfaces (1st level)
                     ]
                 for name in set(names):
-                    services.setdefault(
-                        name, (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
-                    )
+                    services[name] = (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
             else:
                 metadata = self._get_service_metadata(key=key, val=val, defaults=defaults)
                 if metadata.type.__mro__[1:][0] is ABC:
                     raise TypeError('Can not instantiate abstract class <{0}>!'.format(metadata.name))
-                services.setdefault(key, (metadata, 0))
+                services[key] = (metadata, 0)
         service_limit_retries = pow(len(services.keys()), 2)
         while len(services.keys()) > 0:
             try:
@@ -383,20 +383,21 @@ class ContainerBuilder:
                     )
                 if err.key() in services:
                     del services[err.key()]
-                services[err.key()] = (err.value(), err.times())
+                services = {err.key(): (err.value(), err.times()), **services}
             finally:
                 for key in self._services.keys():
                     if key in services.keys():
                         del services[key]
 
     def _parse_services(self, services: Dict[str, Tuple[_ServiceMetadata, int]]) -> None:
+        services = services
         for name, (metadata, times) in services.items():
             self._services.setdefault(
                 name,
                 self._parse_service(
                     service_metadata=metadata,
                     retries=times,
-                )
+                ),
             )
 
     @staticmethod
@@ -477,8 +478,10 @@ class ContainerBuilder:
                     default=(
                         kwargs[str(param[0])]
                         if str(param[0]) in kwargs and kwargs[str(param[0])].startswith('@')
-                        else None if param[1].default is Parameter.empty else param[1].default
-                    )
+                        else None
+                        if param[1].default is Parameter.empty
+                        else param[1].default
+                    ),
                 )
                 for param in signature(clazz).parameters.items()
             ],

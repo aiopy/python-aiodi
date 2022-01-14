@@ -61,13 +61,14 @@ log_level = "%env(APP_LEVEL, 'INFO')%"
 [tool.aiodi.services."logging.Logger"]
 class = "sample.utils.get_simple_logger"
 arguments = { name = "%var(name)%", level = "%var(log_level)%" }
+
 #
-#[tool.aiodi.services."sample.blabla.log.GreetToWithLogger"]
-#arguments = { logger = "@blabla" }
+[tool.aiodi.services."sample.blabla.log.GreetToWithLogger"]
+#arguments = { commands = "@logging.Logger" }
 #
-##[tool.aiodi.services."sample.libs.users"]
-##_defaults = { autoregistration = { resource = "sample/libs/users" } }
+[tool.aiodi.services."sample.libs.users"]
+_defaults = { autoregistration = { resource = "sample/libs/users" } }
 #
-[tool.aiodi.services."sample.libs.all"]
+[tool.aiodi.services."*"]
 #_defaults = { autoregistration = { resource = "sample/libs/users/infra", exclude = "sample/libs/users/{infra/subinfra,infra/something.py,infra/*command.py}" } }
 _defaults = { autoregistration = { resource = "sample/libs/*", exclude = "sample/libs/users/{domain,infra/something.py,infra/*command.py}" } }
