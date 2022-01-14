@@ -169,7 +169,9 @@ class ContainerBuilder:
                 )
                 if filepath.is_file() and filepath.exists():
                     raw = load(str(filepath))
-                    data = raw.get('tool', {tool_key: {'variables': {}, 'services': {}}}).get(tool_key)
+                    data = raw.get('tool', {tool_key: {}}).get(tool_key)
+                    data.setdefault('variables', {})
+                    data.setdefault('services', {})
                     data.get('services').setdefault('_defaults', _DEFAULTS['SERVICE_DEFAULTS'])
                     project_dir = data.get('services').get('_defaults').get('project_dir')
                     if project_dir is None or len(project_dir) == 0:
@@ -372,9 +374,6 @@ class ContainerBuilder:
         while len(services.keys()) > 0:
             try:
                 self._parse_services(services=services)
-                for key in self._services.keys():
-                    if key in services.keys():
-                        del services[key]
             except ServiceResolutionPostponed as err:
                 if self._debug:
                     logger.debug(err.__str__())
@@ -382,12 +381,23 @@ class ContainerBuilder:
                     raise InterruptedError(
                         'Reached limit of retries ({0}) per service <{1}>!'.format(service_limit_retries, err.key())
                     )
-                del services[err.key()]
+                if err.key() in services:
+                    del services[err.key()]
                 services[err.key()] = (err.value(), err.times())
+            finally:
+                for key in self._services.keys():
+                    if key in services.keys():
+                        del services[key]
 
     def _parse_services(self, services: Dict[str, Tuple[_ServiceMetadata, int]]) -> None:
-        for _, (metadata, times) in services.items():
-            self._services.setdefault(metadata.name, self._parse_service(service_metadata=metadata, retries=times))
+        for name, (metadata, times) in services.items():
+            self._services.setdefault(
+                name,
+                self._parse_service(
+                    service_metadata=metadata,
+                    retries=times,
+                )
+            )
 
     @staticmethod
     def _define_service_type(name: str, typ: str, cls: str) -> Tuple[Type[Any], Type[Any]]:
@@ -451,11 +461,11 @@ class ContainerBuilder:
                 _ServiceParameterMetadata(
                     name=str(param[0]),
                     source_kind=(
-                        'arg'
-                        if str(param[0]) in kwargs
+                        'svc'
+                        if str(param[0]) in kwargs and kwargs[str(param[0])].startswith('@')
                         else (
-                            'svc'
-                            if isinstance(param[1].default, str) and param[1].default.startswith('@')
+                            'arg'
+                            if str(param[0]) in kwargs
                             else (
                                 'typ'
                                 if param[1].default is Parameter.empty and not is_primitive(param[1].annotation)
@@ -464,7 +474,11 @@ class ContainerBuilder:
                         )
                     ),
                     type=param[1].annotation,
-                    default=None if param[1].default is Parameter.empty else param[1].default,
+                    default=(
+                        kwargs[str(param[0])]
+                        if str(param[0]) in kwargs and kwargs[str(param[0])].startswith('@')
+                        else None if param[1].default is Parameter.empty else param[1].default
+                    )
                 )
                 for param in signature(clazz).parameters.items()
             ],
