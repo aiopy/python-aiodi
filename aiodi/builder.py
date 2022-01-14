@@ -2,13 +2,16 @@ from abc import ABC
 from glob import glob
 from inspect import Parameter, signature
 from os import getenv
+from os.path import abspath, dirname
 from pathlib import Path
-from re import Match, finditer
+from re import finditer
+from sys import argv
 from typing import (
     Any,
     Callable,
     Dict,
     List,
+    Match,
     MutableMapping,
     NamedTuple,
     Optional,
@@ -47,47 +50,50 @@ _DEFAULTS = {
 
 _VARIABLE_METADATA_REGEX = r"%(static|env|var)\((str:|int:|float:|bool:)?([\w]+)(,\s{1}'.*?')?\)%"
 
-_VariableMatchMetadata = NamedTuple(
-    '_VariableMatchMetadata', source_kind=str, type=Type[Any], source_name=str, default=Any, match=Match
-)
-_VariableMetadata = NamedTuple(
-    '_VariableMetadata',
-    name=str,
-    value=Any,
-    matches=List[_VariableMatchMetadata],
-)
 
-_ServiceDefaults = NamedTuple(
-    '_ServiceDefaults',
-    project_dir=Optional[str],
-    autowire=bool,
-    autoconfigure=bool,
-    autoregistration=Dict[str, Optional[str]],
-)
-_ServiceParameterMetadata = NamedTuple(
-    '_ServiceParameterMetadata',
-    name=str,
-    source_kind=str,
-    type=Type[Any],
-    default=Any,
-)
-_ServiceMetadata = NamedTuple(
-    '_ServiceMetadata',
-    name=str,
-    type=Type[Any],
-    clazz=Type[Any],
-    arguments=Dict[str, Any],
-    params=List[_ServiceParameterMetadata],
-    defaults=_ServiceDefaults,
-)
+class _VariableMatchMetadata(NamedTuple):
+    source_kind: str
+    type: Type[Any]
+    source_name: str
+    default: Any
+    match: Match
+
+
+class _VariableMetadata(NamedTuple):
+    name: str
+    value: Any
+    matches: List[_VariableMatchMetadata]
+
+
+class _ServiceDefaults(NamedTuple):
+    project_dir: str
+    autowire: bool
+    autoconfigure: bool
+    autoregistration: Dict[str, Optional[str]]
+
+
+class _ServiceParameterMetadata(NamedTuple):
+    name: str
+    source_kind: str
+    type: Type[Any]
+    default: Any
+
+
+class _ServiceMetadata(NamedTuple):
+    name: str
+    type: Type[Any]
+    clazz: Type[Any]
+    arguments: Dict[str, Any]
+    params: List[_ServiceParameterMetadata]
+    defaults: _ServiceDefaults
+
 
 _SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX = r"^([.\w/]+)?({[\w/.*,]+})?$"
 
-_ServiceExcludeMetadata = NamedTuple(
-    '_ServiceExcludeMetadata',
-    left=str,
-    right=List[str],
-)
+
+class _ServiceExcludeMetadata(NamedTuple):
+    left: str
+    right: List[str]
 
 
 class ValueResolutionPostponed(Exception):
@@ -132,8 +138,6 @@ class ServiceNotFound(Exception):
 
 
 class ContainerBuilder:
-    """Experimental"""
-
     _raw_load: Callable[[], MutableMapping[str, Any]]
     _variables_key: str
     _variables: Dict[str, Any]
@@ -146,27 +150,23 @@ class ContainerBuilder:
         self._debug = debug
 
         if len(filenames) == 0:
-            filenames = _DEFAULTS['FILENAMES']
+            filenames = _DEFAULTS['FILENAMES']  # type: ignore
 
         def _raw_load() -> MutableMapping[str, Any]:
-            from os.path import abspath, dirname
-            from sys import argv
-
             from toml import load
 
             cwd = Path(abspath(dirname(argv[0])))
 
             for filename in filenames:
-                relative_parts_to_removed = len(([part for part in Path(filename).parts if part == '..']))
+                relative_parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
                 filepath = Path(
                     '/'.join(
                         [
-                            *(cwd.parts if relative_parts_to_removed == 0 else cwd.parts[:-relative_parts_to_removed]),
-                            *Path(filename).parts[relative_parts_to_removed:],
+                            *(cwd.parts if relative_parts_to_remove == 0 else cwd.parts[:-relative_parts_to_remove]),
+                            *Path(filename).parts[relative_parts_to_remove:],
                         ]
                     )
                 )
-
                 if filepath.is_file() and filepath.exists():
                     raw = load(str(filepath))
                     data = raw.get('tool', {tool_key: {'variables': {}, 'services': {}}}).get(tool_key)
@@ -178,31 +178,31 @@ class ContainerBuilder:
 
             raise FileNotFoundError('Missing file to load dependencies')
 
-        self._raw_load = _raw_load
-        self._variables_key = _DEFAULTS['VARIABLE_KEY'] if var_key is None or len(var_key) == 0 else var_key
+        self._raw_load = _raw_load  # type: ignore
+        self._variables_key = str(_DEFAULTS['VARIABLE_KEY'] if var_key is None or len(var_key) == 0 else var_key)
         self._variables = {}
         self._services = {}
-        self._services_defaults = _ServiceDefaults(**_DEFAULTS['SERVICE_DEFAULTS'])
+        self._services_defaults = _ServiceDefaults(**_DEFAULTS['SERVICE_DEFAULTS'])  # type: ignore
 
     def load(self) -> Container:
-        raw = self._raw_load()
+        raw = self._raw_load()  # type: ignore
 
-        self._parse_variables_wrapper(raw_variables=raw.get('variables'))
+        self._parse_variables_wrapper(raw_variables=raw.get('variables', {}))
 
         self._services.setdefault(self._variables_key, self._variables)
 
-        svc_defaults = raw.get('services').get('_defaults')
+        svc_defaults = raw.get('services', {}).get('_defaults')
         self._services_defaults = _ServiceDefaults(
-            project_dir=str(svc_defaults['project_dir']) if 'project_dir' in svc_defaults else None,
+            project_dir=str(svc_defaults['project_dir']) if 'project_dir' in svc_defaults else '',
             autowire=bool(svc_defaults['autowire']) if 'autowire' in svc_defaults else False,
             autoconfigure=bool(svc_defaults['autoconfigure']) if 'autoconfigure' in svc_defaults else False,
             autoregistration=svc_defaults['autoregistration']
             if 'autoregistration' in svc_defaults
-            else _DEFAULTS['SERVICE_DEFAULTS']['autoregistration'],
+            else _DEFAULTS['SERVICE_DEFAULTS']['autoregistration'],  # type: ignore
         )
-        del raw.get('services')['_defaults']
+        del raw.get('services', {})['_defaults']
 
-        self._parse_services_wrapper(raw_services=raw.get('services'))
+        self._parse_services_wrapper(raw_services=raw.get('services', {}))
 
         return Container(items=[(key, val, {}) for key, val in self._services.items()])
 
@@ -275,8 +275,7 @@ class ContainerBuilder:
                         raise VariableResolutionPostponed(
                             key=variable_metadata.name, value=variable_metadata, times=retries + 1
                         )
-                    else:
-                        raise VariableNotFound(name=variable_metadata.name)
+                    raise VariableNotFound(name=variable_metadata.name)
                 typ_val = self._variables.get(metadata.source_name, metadata.default)
             # concatenate right side content per iteration
             values += (
@@ -336,9 +335,9 @@ class ContainerBuilder:
             resource = defaults.autoregistration['resource'] or ''
             if resource:
                 excludes: List[str] = []
-                if defaults.autoregistration['exclude'] or '':
+                if defaults.autoregistration['exclude']:
                     exclude_metadata = self._get_service_exclude_metadata(
-                        raw_exclude=(defaults.autoregistration['exclude'] or ''), project_dir=defaults.project_dir
+                        raw_exclude=(defaults.autoregistration['exclude'] or ''), project_dir=defaults.project_dir or ''
                     )
                     if exclude_metadata:
                         excludes = (
@@ -387,32 +386,32 @@ class ContainerBuilder:
                 services[err.key()] = (err.value(), err.times())
 
     def _parse_services(self, services: Dict[str, Tuple[_ServiceMetadata, int]]) -> None:
-        for name, (metadata, times) in services.items():
+        for _, (metadata, times) in services.items():
             self._services.setdefault(metadata.name, self._parse_service(service_metadata=metadata, retries=times))
 
     @staticmethod
     def _define_service_type(name: str, typ: str, cls: str) -> Tuple[Type[Any], Type[Any]]:
         if typ is _DEFAULTS['SERVICE'] and cls is _DEFAULTS['SERVICE']:
-            cls = typ = import_module_and_get_attr(name=name)
-            return typ, cls
+            cls = typ = import_module_and_get_attr(name=name)  # type: ignore
+            return typ, cls  # type: ignore
 
         if typ is not _DEFAULTS['SERVICE']:
-            typ = import_module_and_get_attr(name=typ)
+            typ = import_module_and_get_attr(name=typ)  # type: ignore
         if cls is not _DEFAULTS['SERVICE']:
-            cls = import_module_and_get_attr(name=cls)
+            cls = import_module_and_get_attr(name=cls)  # type: ignore
 
         if typ is _DEFAULTS['SERVICE']:
             try:
-                typ = import_module_and_get_attr(name=name)
+                typ = import_module_and_get_attr(name=name)  # type: ignore
             except Exception:
                 typ = cls
         if cls is _DEFAULTS['SERVICE']:
             cls = typ
 
-        if cls is not typ and not issubclass(signature(cls).return_annotation or cls, typ):
+        if cls is not typ and not issubclass(signature(cls).return_annotation or cls, typ):  # type: ignore
             raise TypeError('Class <{0}> return type must be <{1}>'.format(cls, typ))
 
-        return typ, cls
+        return typ, cls  # type: ignore
 
     def _get_service_defaults(self, val: Any) -> _ServiceDefaults:
         has_defaults = isinstance(val, dict) and '_defaults' in val
@@ -494,7 +493,7 @@ class ContainerBuilder:
                     if self._debug:
                         logger.debug('Try enabling autowire')
                     raise ServiceNotFound(name=service_metadata.name)
-                services = [svc for svc in self._services.values() if type(svc) is param.type]
+                services = [svc for svc in self._services.values() if isinstance(svc, param.type)]
                 if len(services) == 1:
                     param_val = services[0]
                 else:

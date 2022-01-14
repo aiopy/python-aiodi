@@ -25,7 +25,7 @@ def is_simple(val: typing.Any) -> bool:
 
 
 def is_optional(field: typing.Any) -> bool:  # pragma: no cover
-    return typing_get_origin(field) is typing.Union and type(None) in typing_get_args(field)
+    return typing_get_origin(field) is typing.Union and type(None) in typing_get_args(field)  # type: ignore
 
 
 def import_module_and_get_attr(name: str) -> typing.Type[typing.Any]:
@@ -42,7 +42,7 @@ def _types_in_module(module: ModuleType) -> typing.List[typing.Type[typing.Any]]
 
 
 def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) -> typing.Dict[str, ModuleType]:
-    full_name = path.replace('/', '.').replace('.py', '', 1)
+    full_name = path.replace('.py', '', 1).replace('/', '.')
     package = import_module(name=full_name)
 
     exclude_paths = [str(exclude) for exclude in excludes]
@@ -51,8 +51,8 @@ def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) 
 
     if hasattr(package, '__path__'):
         for file_finder, name, is_pkg in walk_packages(path=package.__path__):
-            include = Path(file_finder.path)
-            include_absolute_path = str(Path(file_finder.path)) + '/' + name + ('' if is_pkg else '.py')
+            include = Path(file_finder.path)  # type: ignore
+            include_absolute_path = str(Path(file_finder.path)) + '/' + name + ('' if is_pkg else '.py')  # type: ignore
             if include_absolute_path in exclude_paths:
                 continue
             includes.append((include, name, is_pkg))
@@ -77,7 +77,7 @@ def import_module_and_get_attrs(
         recursive=recursive,
         excludes=[Path(exclude) for exclude in excludes if Path(exclude).exists()],
     ).items():
-        for key, svc in module.__dict__.items():
+        for _, svc in module.__dict__.items():
             if hasattr(svc, '__module__') and svc.__module__ == name:
                 full_name = svc.__module__ + '.' + svc.__name__
                 results[full_name] = svc
