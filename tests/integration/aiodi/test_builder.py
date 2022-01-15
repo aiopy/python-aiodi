@@ -1,4 +1,5 @@
 from logging import Logger
+from pprint import pprint
 
 from sample.apps.settings import container
 from sample.libs.users.application.finder_service import UserFinderService
@@ -19,6 +20,8 @@ def test_container() -> None:
 
     assert 'UserLogger' in di and di.get('UserLogger', typ=InMemoryUserLogger)
     assert 'logging.Logger' in di and di.get(Logger)
+
+    pprint(di)  # below code fails on Python 3.6, why?
 
     assert 'sample.libs.users.application.finder_service.UserFinderService' in di and di.get(UserFinderService)
     assert 'sample.libs.users.application.register_service.UserRegisterService' in di and di.get(UserRegisterService)
