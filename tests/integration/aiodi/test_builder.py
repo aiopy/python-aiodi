@@ -26,4 +26,4 @@ def test_container() -> None:
         di.get(InMemoryUserRepository), UserRepository
     )
 
-    assert 'UserRepository' not in di  # this is random, needs to be fixed!
+    assert 'UserRepository' not in di  # just to ensure arg to be resolved is taken per fqdn instead of name

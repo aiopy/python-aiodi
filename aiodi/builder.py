@@ -163,7 +163,7 @@ class ContainerBuilder:
 
         self._cwd = Path(abspath(dirname(argv[0])))
         self._filepaths = []
-        for filename in _DEFAULTS['FILENAMES'] if len(filenames) == 0 else filenames:
+        for filename in _DEFAULTS['FILENAMES'] if len(filenames) == 0 else filenames:  # type: ignore
             parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
             self._filepaths.append(
                 Path(
@@ -188,8 +188,12 @@ class ContainerBuilder:
 
         self._services.setdefault(self._variables_key, self._variables)
 
+        _defaults = {**_DEFAULTS['SERVICE_DEFAULTS'], **raw.services.get('_defaults', {})}  # type: ignore
         self._services_defaults = _ServiceDefaults(
-            **{**_DEFAULTS['SERVICE_DEFAULTS'], **raw.services.get('_defaults', {})}
+            project_dir=_defaults['project_dir'],
+            autowire=_defaults['autowire'],
+            autoconfigure=_defaults['autoconfigure'],
+            autoregistration=_defaults['autoregistration'],
         )
         del raw.services['_defaults']
 
@@ -413,7 +417,6 @@ class ContainerBuilder:
                         del services[key]
 
     def _parse_services(self, services: Dict[str, Tuple[_ServiceMetadata, int]]) -> None:
-        services = services
         for name, (metadata, times) in services.items():
             self._services.setdefault(
                 name,
@@ -537,7 +540,11 @@ class ContainerBuilder:
                 if len(services) == 1:
                     param_val = services[0]
                 else:
-                    raise ServiceResolutionPostponed(key=param.type.__name__, value=service_metadata, times=retries + 1)
+                    raise ServiceResolutionPostponed(
+                        key='.'.join([param.type.__module__, param.type.__name__]),
+                        value=service_metadata,
+                        times=retries + 1,
+                    )
             # cast primitive value
             if param_val is not None and is_primitive(param.type):
                 param_val = param.type(param_val)
