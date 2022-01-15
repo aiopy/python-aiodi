@@ -13,4 +13,4 @@ class UserFinderService:
 
     def __call__(self, email: str) -> None:
         user = self._repository.find_one(email=UserEmail(email))
-        self._logger.info('User <{0}> found!'.format(user.email().value()))
+        self._logger.info('User <{0}> found!'.format(user.email().value().value()))

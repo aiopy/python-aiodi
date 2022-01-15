@@ -1,62 +1,29 @@
-from pytest import raises
+from logging import Logger
 
-from aiodi import Container
+from sample.apps.settings import container
+from sample.libs.users.application.finder_service import UserFinderService
+from sample.libs.users.application.register_service import UserRegisterService
+from sample.libs.users.domain.repositories import UserRepository
+from sample.libs.users.infrastructure.in_memory_user_logger import InMemoryUserLogger
+from sample.libs.users.infrastructure.in_memory_user_repository import (
+    InMemoryUserRepository,
+)
 
 
 def test_container() -> None:
-    env = 'development'
-    container = Container(
-        {
-            'config': {'environment': env},
-            'services': {},
-        }
+    di = container('../../../sample/pyproject.toml')
+
+    assert 'env.log_level' in di and di.get('env.log_level', typ=str) == 'INFO'
+    assert 'env.name' in di and di.get('env.name', typ=str) == 'sample'
+    assert 'env.version' in di and di.get('env.version', typ=int) == 1
+
+    assert 'UserLogger' in di and di.get('UserLogger', typ=InMemoryUserLogger)
+    assert 'logging.Logger' in di and di.get(Logger)
+
+    assert 'sample.libs.users.application.finder_service.UserFinderService' in di and di.get(UserFinderService)
+    assert 'sample.libs.users.application.register_service.UserRegisterService' in di and di.get(UserRegisterService)
+    assert 'sample.libs.users.infrastructure.in_memory_user_repository.InMemoryUserRepository' in di and isinstance(
+        di.get(InMemoryUserRepository), UserRepository
     )
 
-    assert container.__contains__('config')
-    assert container.__contains__('config.environment')
-    assert container.__contains__('services')
-
-    class _Test:
-        def __init__(self, value: str):
-            self.value = value
-
-    class _MyService(_Test):
-        pass
-
-    class _MyAnotherService(_Test):
-        pass
-
-    tz = 'UTC'
-    my_svc = _MyService('foo_my_svc')
-    my_another_svc = _MyAnotherService('foo_my_another_svc')
-
-    container.set(key='config.tz', val=tz)
-    container.set(key='foo', val='foo')
-    container.resolve(
-        [
-            ('services.foo', _Test, {'value': container.resolve_parameter(lambda di: di.get('foo'))}),
-            (_MyService, my_svc),
-            my_another_svc,
-        ]
-    )
-
-    assert container.__contains__('config.tz')
-    assert container.__contains__('services.foo')
-    assert container.__contains__(_MyService)
-    assert container.__contains__(my_svc)
-    assert container.__contains__(_MyService)
-    assert container.__contains__(my_another_svc)
-
-    assert container.get(key='config.environment', typ=str) == env
-    assert container.get(key='config.tz', typ=str) == tz
-    assert container.get(key='services.foo', typ=_Test)
-    assert container.get(_MyService) is my_svc
-    assert container.get(my_svc) is my_svc
-    assert container.get(_MyAnotherService) is my_another_svc
-    assert container.get(my_another_svc) is my_another_svc
-    assert len(container.get(_Test, instance_of=True)) == 3
-
-    raises(TypeError, lambda: container.get(key='services.foo', typ=str))
-    raises(KeyError, lambda: container.get(key='services.bar'))
-
-    assert not container.__contains__('')
+    assert 'UserRepository' not in di  # this is random, needs to be fixed!
