@@ -4,6 +4,7 @@ from inspect import Parameter, signature
 from os import getenv
 from os.path import abspath, dirname
 from pathlib import Path
+from random import shuffle
 from re import finditer
 from sys import argv
 from typing import (
@@ -227,7 +228,7 @@ class ContainerBuilder:
         variables = dict(
             [(key, (self._get_variable_metadata(key=key, val=val), 0)) for key, val in raw_variables.items()]
         )
-        variable_limit_retries = pow(len(variables.keys()), 2)
+        variable_limit_retries = pow(len(variables.keys()), 3)
         while len(variables.keys()) > 0:
             try:
                 self._parse_variables(variables=variables)
@@ -240,7 +241,9 @@ class ContainerBuilder:
                     )
                 if err.key() in variables:
                     del variables[err.key()]
-                variables = {err.key(): (err.value(), err.times()), **variables}
+                variables_list = list({err.key(): (err.value(), err.times()), **variables}.items())
+                shuffle(variables_list)  # avoid re-processing same dependency
+                variables = dict(variables_list)
             finally:
                 for key in self._variables.keys():
                     if key in variables.keys():
@@ -388,7 +391,7 @@ class ContainerBuilder:
 
     def _parse_services_wrapper(self, raw_services: Dict[str, Any]) -> None:
         services = self._prepare_services_to_parse(raw_services=raw_services)
-        service_limit_retries = pow(len(services.keys()), 2)
+        service_limit_retries = pow(len(services.keys()), 3)
         while len(services.keys()) > 0:
             try:
                 self._parse_services(services=services)
@@ -401,7 +404,9 @@ class ContainerBuilder:
                     )
                 if err.key() in services:
                     del services[err.key()]
-                services = {err.key(): (err.value(), err.times()), **services}
+                services_list = list({err.key(): (err.value(), err.times()), **services}.items())
+                shuffle(services_list)  # avoid re-processing same dependency
+                services = dict(services_list)
             finally:
                 for key in self._services.keys():
                     if key in services.keys():
