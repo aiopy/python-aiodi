@@ -8,7 +8,6 @@ from re import finditer
 from sys import argv
 from typing import (
     Any,
-    Callable,
     Dict,
     List,
     Match,
@@ -49,6 +48,12 @@ _DEFAULTS = {
 }
 
 _VARIABLE_METADATA_REGEX = r"%(static|env|var)\((str:|int:|float:|bool:)?([\w]+)(,\s{1}'.*?')?\)%"
+_SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX = r"^([.\w/]+)?({[\w/.*,]+})?$"
+
+
+class _RawData(NamedTuple):
+    variables: Dict[str, Any]
+    services: Dict[str, Any]
 
 
 class _VariableMatchMetadata(NamedTuple):
@@ -86,9 +91,6 @@ class _ServiceMetadata(NamedTuple):
     arguments: Dict[str, Any]
     params: List[_ServiceParameterMetadata]
     defaults: _ServiceDefaults
-
-
-_SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX = r"^([.\w/]+)?({[\w/.*,]+})?$"
 
 
 class _ServiceExcludeMetadata(NamedTuple):
@@ -138,75 +140,88 @@ class ServiceNotFound(Exception):
 
 
 class ContainerBuilder:
-    _raw_load: Callable[[], MutableMapping[str, Any]]
+    _debug: bool
+    _tool_key: str
+    _cwd: Path
+    _filepaths: List[Path]
     _variables_key: str
     _variables: Dict[str, Any]
     _services: Dict[str, Any]
     _services_defaults: _ServiceDefaults
 
     def __init__(
-        self, filenames: List[str] = [], *, debug: bool = False, tool_key: str = 'aiodi', var_key: str = 'env'
+        self,
+        filenames: List[str] = [],
+        *,
+        debug: bool = False,
+        tool_key: str = 'aiodi',
+        var_key: str = 'env',
     ) -> None:
         self._debug = debug
+        self._tool_key = tool_key
 
-        if len(filenames) == 0:
-            filenames = _DEFAULTS['FILENAMES']  # type: ignore
-
-        def _raw_load() -> MutableMapping[str, Any]:
-            from toml import load
-
-            cwd = Path(abspath(dirname(argv[0])))
-
-            for filename in filenames:
-                relative_parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
-                filepath = Path(
+        self._cwd = Path(abspath(dirname(argv[0])))
+        self._filepaths = []
+        for filename in _DEFAULTS['FILENAMES'] if len(filenames) == 0 else filenames:
+            parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
+            self._filepaths.append(
+                Path(
                     '/'.join(
                         [
-                            *(cwd.parts if relative_parts_to_remove == 0 else cwd.parts[:-relative_parts_to_remove]),
-                            *Path(filename).parts[relative_parts_to_remove:],
+                            *(self._cwd.parts if parts_to_remove == 0 else self._cwd.parts[:-parts_to_remove]),
+                            *Path(filename).parts[parts_to_remove:],
                         ]
                     )
                 )
-                if filepath.is_file() and filepath.exists():
-                    raw = load(str(filepath))
-                    data = raw.get('tool', {tool_key: {}}).get(tool_key)
-                    data.setdefault('variables', {})
-                    data.setdefault('services', {})
-                    data.get('services').setdefault('_defaults', _DEFAULTS['SERVICE_DEFAULTS'])
-                    project_dir = data.get('services').get('_defaults').get('project_dir')
-                    if project_dir is None or len(project_dir) == 0:
-                        data.get('services').get('_defaults')['project_dir'] = str(filepath.absolute().parent.resolve())
-                    return data
+            )
 
-            raise FileNotFoundError('Missing file to load dependencies')
-
-        self._raw_load = _raw_load  # type: ignore
         self._variables_key = str(_DEFAULTS['VARIABLE_KEY'] if var_key is None or len(var_key) == 0 else var_key)
         self._variables = {}
         self._services = {}
         self._services_defaults = _ServiceDefaults(**_DEFAULTS['SERVICE_DEFAULTS'])  # type: ignore
 
     def load(self) -> Container:
-        raw = self._raw_load()  # type: ignore
+        raw = self._raw_toml_load()
 
-        self._parse_variables_wrapper(raw_variables=raw.get('variables', {}))
+        self._parse_variables_wrapper(raw_variables=raw.variables)
 
         self._services.setdefault(self._variables_key, self._variables)
 
-        svc_defaults = raw.get('services', {}).get('_defaults')
         self._services_defaults = _ServiceDefaults(
-            project_dir=str(svc_defaults['project_dir']) if 'project_dir' in svc_defaults else '',
-            autowire=bool(svc_defaults['autowire']) if 'autowire' in svc_defaults else False,
-            autoconfigure=bool(svc_defaults['autoconfigure']) if 'autoconfigure' in svc_defaults else False,
-            autoregistration=svc_defaults['autoregistration']
-            if 'autoregistration' in svc_defaults
-            else _DEFAULTS['SERVICE_DEFAULTS']['autoregistration'],  # type: ignore
+            **{**_DEFAULTS['SERVICE_DEFAULTS'], **raw.services.get('_defaults', {})}
         )
-        del raw.get('services', {})['_defaults']
+        del raw.services['_defaults']
 
-        self._parse_services_wrapper(raw_services=raw.get('services', {}))
+        self._parse_services_wrapper(raw_services=raw.services)
 
         return Container(items=[(key, val, {}) for key, val in self._services.items()])
+
+    def _sanitize_raw_data(self, raw: MutableMapping[str, Any]) -> _RawData:
+        data = raw.get('tool', {}).get(self._tool_key, {})
+        data.setdefault('variables', {})
+        data.setdefault('services', {})
+        data.get('services').setdefault('_defaults', _DEFAULTS['SERVICE_DEFAULTS'])
+        project_dir = data.get('services').get('_defaults').get('project_dir')
+        if project_dir is None or len(project_dir) == 0:
+            data.get('services').get('_defaults')['project_dir'] = self._cwd
+        else:
+            parts_to_remove = len([part for part in Path(project_dir).parts if part == '..'])
+            project_dir = '/'.join(self._cwd.parts[:-parts_to_remove])
+            if project_dir.startswith('//'):
+                project_dir = project_dir[1:]
+            data.get('services').get('_defaults')['project_dir'] = project_dir
+            self._cwd = Path(project_dir)
+        return _RawData(variables=data.get('variables'), services=data.get('services'))
+
+    def _raw_toml_load(self) -> _RawData:
+        from toml import load
+
+        for filepath in self._filepaths:
+            if filepath.is_file() and filepath.exists():
+                raw = load(str(filepath))
+                return self._sanitize_raw_data(raw=raw)
+
+        raise FileNotFoundError('Missing .toml file to load dependencies')
 
     def _parse_variables_wrapper(self, raw_variables: Dict[str, Any]) -> None:
         variables = dict(
@@ -332,7 +347,7 @@ class ContainerBuilder:
             right=list(set(rights)),
         )
 
-    def _parse_services_wrapper(self, raw_services: Dict[str, Any]) -> None:
+    def _prepare_services_to_parse(self, raw_services: Dict[str, Any]) -> Dict[str, Tuple[_ServiceMetadata, int]]:
         services: Dict[str, Tuple[_ServiceMetadata, int]] = {}
         for key, val in raw_services.items():
             defaults = self._get_service_defaults(val=val)
@@ -354,22 +369,25 @@ class ContainerBuilder:
                     resources = [
                         include.replace(defaults.project_dir + '/', '', 1)
                         for include in glob(defaults.project_dir + '/' + resource)
-                        if not include.endswith('__pycache__')
+                        if not include.endswith('__pycache__') and not include.endswith('.pyc')
                     ]
-
                 for include in resources:
                     names += [
                         name
                         for name, mod in import_module_and_get_attrs(name=include, excludes=excludes).items()
-                        if not mod.__mro__[1:][0] is ABC  # avoid loading interfaces (1st level)
+                        if hasattr(mod, '__mro__') and not mod.__mro__[1:][0] is ABC  # avoid loading interfaces
                     ]
                 for name in set(names):
                     services[name] = (self._get_service_metadata_from_autoload(name=name, defaults=defaults), 0)
             else:
                 metadata = self._get_service_metadata(key=key, val=val, defaults=defaults)
-                if metadata.type.__mro__[1:][0] is ABC:
+                if hasattr(metadata.type, '__mro__') and metadata.type.__mro__[1:][0] is ABC:
                     raise TypeError('Can not instantiate abstract class <{0}>!'.format(metadata.name))
                 services[key] = (metadata, 0)
+        return services
+
+    def _parse_services_wrapper(self, raw_services: Dict[str, Any]) -> None:
+        services = self._prepare_services_to_parse(raw_services=raw_services)
         service_limit_retries = pow(len(services.keys()), 2)
         while len(services.keys()) > 0:
             try:
@@ -514,7 +532,7 @@ class ContainerBuilder:
                 if len(services) == 1:
                     param_val = services[0]
                 else:
-                    raise ServiceResolutionPostponed(key=param_val[1:], value=service_metadata, times=retries + 1)
+                    raise ServiceResolutionPostponed(key=param.type.__name__, value=service_metadata, times=retries + 1)
             # cast primitive value
             if param_val is not None and is_primitive(param.type):
                 param_val = param.type(param_val)
