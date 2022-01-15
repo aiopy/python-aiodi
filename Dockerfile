@@ -1,4 +1,7 @@
 FROM docker.io/library/python:3.6.15-slim as development
+#FROM docker.io/library/python:3.7-slim as development
+#FROM docker.io/library/python:3.8-slim as development
+#FROM docker.io/library/python:3.9-slim as development
 
 WORKDIR /app
 
