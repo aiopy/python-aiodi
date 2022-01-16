@@ -1,6 +1,8 @@
 from logging import Logger
 from os.path import abspath, dirname
 
+import pytest
+
 from sample.apps.settings import container
 from sample.libs.users.application.finder_service import UserFinderService
 from sample.libs.users.application.register_service import UserRegisterService
@@ -11,6 +13,7 @@ from sample.libs.users.infrastructure.in_memory_user_repository import (
 )
 
 
+@pytest.mark.timeout(15)
 def test_container() -> None:
     di = container(filename='../../pyproject.toml', cwd=abspath(dirname(__name__)) + '/sample/apps/cli')
 

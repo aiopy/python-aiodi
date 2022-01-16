@@ -15,6 +15,7 @@ pytest==6.2.5
 # fixed due to Python 3.6 support
 pytest-asyncio==0.16.0
 pytest-cov==3.0.0
+pytest-timeout==2.0.2
 pytest-xdist==2.5.0
 # fixed due to Python 3.6 support
 setuptools==59.6.0

@@ -207,16 +207,15 @@ class ContainerBuilder:
         filepaths: List[Path] = []
         for filename in filenames:
             parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
-            filepaths.append(
-                Path(
-                    '/'.join(
-                        [
-                            *(cwd.parts if parts_to_remove == 0 else cwd.parts[:-parts_to_remove]),
-                            *Path(filename).parts[parts_to_remove:],
-                        ]
-                    )
-                )
+            filename_ = '/'.join(
+                [
+                    *(cwd.parts if parts_to_remove == 0 else cwd.parts[:-parts_to_remove]),
+                    *Path(filename).parts[parts_to_remove:],
+                ]
             )
+            if filename_.startswith('//'):
+                filename_ = filename_[1:]
+            filepaths.append(Path(filename_))
         return filepaths
 
     def _sanitize_raw_data(self, raw: MutableMapping[str, Any]) -> _RawData:
