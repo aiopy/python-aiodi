@@ -1,5 +1,5 @@
 from logging import Logger
-from os.path import abspath, dirname
+from pathlib import Path
 
 import pytest
 
@@ -15,7 +15,7 @@ from sample.libs.users.infrastructure.in_memory_user_repository import (
 
 @pytest.mark.timeout(15)
 def test_container() -> None:
-    di = container(filename='../../pyproject.toml', cwd=abspath(dirname(__name__)) + '/sample/apps/cli')
+    di = container(filename='../../../sample/pyproject.toml', cwd=str(Path(__file__).parent.absolute()))
 
     assert 'env.log_level' in di and di.get('env.log_level', typ=str) == 'INFO'
     assert 'env.name' in di and di.get('env.name', typ=str) == 'sample'

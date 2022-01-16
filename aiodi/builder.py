@@ -164,7 +164,7 @@ class ContainerBuilder:
     ) -> None:
         self._debug = debug
         self._tool_key = tool_key
-        self._cwd = Path(cwd) if cwd else self._find_cwd()
+        self._cwd = self._find_cwd(cwd=cwd)
         self._filepaths = self._parse_filepaths(
             cwd=self._cwd, filenames=_DEFAULTS['FILENAMES'] if len(filenames or []) == 0 else filenames  # type: ignore
         )
@@ -195,7 +195,9 @@ class ContainerBuilder:
         return Container(items=[(key, val, {}) for key, val in self._services.items()])
 
     @staticmethod
-    def _find_cwd() -> Path:
+    def _find_cwd(cwd: Optional[str]) -> Path:
+        if cwd:
+            return Path(cwd)
         try:
             main_file = abspath(modules['__main__'].__file__)  # type: ignore
         except Exception:
