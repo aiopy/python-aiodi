@@ -6,9 +6,10 @@ from os.path import abspath, dirname
 from pathlib import Path
 from random import shuffle
 from re import finditer
-from sys import argv
+from sys import executable, modules
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Match,
@@ -17,6 +18,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    Union,
 )
 
 from .container import Container
@@ -140,11 +142,18 @@ class ServiceNotFound(Exception):
         super().__init__('Service <{0}> not found!'.format(name))
 
 
+def _toml_decoder() -> Callable[[Any], Union[MutableMapping[str, Any], Dict[str, Any]]]:
+    from toml import load
+
+    return load
+
+
 class ContainerBuilder:
     _debug: bool
     _tool_key: str
     _cwd: Path
     _filepaths: List[Path]
+    _toml_decoder: Optional[Callable[[Any], Union[MutableMapping[str, Any], Dict[str, Any]]]]
     _variables_key: str
     _variables: Dict[str, Any]
     _services: Dict[str, Any]
@@ -152,30 +161,21 @@ class ContainerBuilder:
 
     def __init__(
         self,
-        filenames: List[str] = [],
+        filenames: Optional[List[str]] = None,
+        cwd: Optional[str] = None,
         *,
         debug: bool = False,
         tool_key: str = 'aiodi',
         var_key: str = 'env',
+        toml_decoder: Optional[Callable[[Any], Union[MutableMapping[str, Any], Dict[str, Any]]]] = None
     ) -> None:
         self._debug = debug
         self._tool_key = tool_key
-
-        self._cwd = Path(abspath(dirname(argv[0])))
-        self._filepaths = []
-        for filename in _DEFAULTS['FILENAMES'] if len(filenames) == 0 else filenames:  # type: ignore
-            parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
-            self._filepaths.append(
-                Path(
-                    '/'.join(
-                        [
-                            *(self._cwd.parts if parts_to_remove == 0 else self._cwd.parts[:-parts_to_remove]),
-                            *Path(filename).parts[parts_to_remove:],
-                        ]
-                    )
-                )
-            )
-
+        self._cwd = Path(cwd) if cwd else self._find_cwd()
+        self._filepaths = self._parse_filepaths(
+            cwd=self._cwd, filenames=_DEFAULTS['FILENAMES'] if len(filenames or []) == 0 else filenames  # type: ignore
+        )
+        self._toml_decoder = toml_decoder
         self._variables_key = str(_DEFAULTS['VARIABLE_KEY'] if var_key is None or len(var_key) == 0 else var_key)
         self._variables = {}
         self._services = {}
@@ -201,6 +201,31 @@ class ContainerBuilder:
 
         return Container(items=[(key, val, {}) for key, val in self._services.items()])
 
+    @staticmethod
+    def _find_cwd() -> Path:
+        try:
+            main_file = abspath(modules['__main__'].__file__)  # type: ignore
+        except Exception:
+            main_file = executable
+        return Path(dirname(main_file))  # type: ignore
+
+    @staticmethod
+    def _parse_filepaths(cwd: Path, filenames: List[str]) -> List[Path]:
+        filepaths: List[Path] = []
+        for filename in filenames:
+            parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
+            filepaths.append(
+                Path(
+                    '/'.join(
+                        [
+                            *(cwd.parts if parts_to_remove == 0 else cwd.parts[:-parts_to_remove]),
+                            *Path(filename).parts[parts_to_remove:],
+                        ]
+                    )
+                )
+            )
+        return filepaths
+
     def _sanitize_raw_data(self, raw: MutableMapping[str, Any]) -> _RawData:
         data = raw.get('tool', {}).get(self._tool_key, {})
         data.setdefault('variables', {})
@@ -219,11 +244,11 @@ class ContainerBuilder:
         return _RawData(variables=data.get('variables'), services=data.get('services'))
 
     def _raw_toml_load(self) -> _RawData:
-        from toml import load
-
+        if not self._toml_decoder:
+            self._toml_decoder = _toml_decoder()
         for filepath in self._filepaths:
             if filepath.is_file() and filepath.exists():
-                raw = load(str(filepath))
+                raw = self._toml_decoder(filepath)
                 return self._sanitize_raw_data(raw=raw)
 
         raise FileNotFoundError('Missing .toml file to load dependencies')

@@ -1,5 +1,5 @@
 from logging import Logger
-from pprint import pprint
+from os.path import abspath, dirname
 
 from sample.apps.settings import container
 from sample.libs.users.application.finder_service import UserFinderService
@@ -12,7 +12,7 @@ from sample.libs.users.infrastructure.in_memory_user_repository import (
 
 
 def test_container() -> None:
-    di = container('../../../sample/pyproject.toml')
+    di = container(filename='../../pyproject.toml', cwd=abspath(dirname(__name__)) + '/sample/apps/cli')
 
     assert 'env.log_level' in di and di.get('env.log_level', typ=str) == 'INFO'
     assert 'env.name' in di and di.get('env.name', typ=str) == 'sample'
@@ -20,8 +20,6 @@ def test_container() -> None:
 
     assert 'UserLogger' in di and di.get('UserLogger', typ=InMemoryUserLogger)
     assert 'logging.Logger' in di and di.get(Logger)
-
-    pprint(di)  # below code fails on container, why?
 
     assert 'sample.libs.users.application.finder_service.UserFinderService' in di and di.get(UserFinderService)
     assert 'sample.libs.users.application.register_service.UserRegisterService' in di and di.get(UserRegisterService)
