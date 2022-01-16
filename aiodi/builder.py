@@ -9,7 +9,6 @@ from re import finditer
 from sys import executable, modules
 from typing import (
     Any,
-    Callable,
     Dict,
     List,
     Match,
@@ -18,7 +17,6 @@ from typing import (
     Optional,
     Tuple,
     Type,
-    Union,
 )
 
 from .container import Container
@@ -28,6 +26,7 @@ from .helpers import (
     is_primitive,
 )
 from .logger import logger
+from .toml import TOMLDecoder, lazy_toml_decoder
 
 _DEFAULTS = {
     'FILENAMES': [
@@ -142,18 +141,12 @@ class ServiceNotFound(Exception):
         super().__init__('Service <{0}> not found!'.format(name))
 
 
-def _toml_decoder() -> Callable[[Any], Union[MutableMapping[str, Any], Dict[str, Any]]]:
-    from toml import load
-
-    return load
-
-
 class ContainerBuilder:
     _debug: bool
     _tool_key: str
     _cwd: Path
     _filepaths: List[Path]
-    _toml_decoder: Optional[Callable[[Any], Union[MutableMapping[str, Any], Dict[str, Any]]]]
+    _toml_decoder: Optional[TOMLDecoder]
     _variables_key: str
     _variables: Dict[str, Any]
     _services: Dict[str, Any]
@@ -167,7 +160,7 @@ class ContainerBuilder:
         debug: bool = False,
         tool_key: str = 'aiodi',
         var_key: str = 'env',
-        toml_decoder: Optional[Callable[[Any], Union[MutableMapping[str, Any], Dict[str, Any]]]] = None
+        toml_decoder: Optional[TOMLDecoder] = None
     ) -> None:
         self._debug = debug
         self._tool_key = tool_key
@@ -245,7 +238,7 @@ class ContainerBuilder:
 
     def _raw_toml_load(self) -> _RawData:
         if not self._toml_decoder:
-            self._toml_decoder = _toml_decoder()
+            self._toml_decoder = lazy_toml_decoder()
         for filepath in self._filepaths:
             if filepath.is_file() and filepath.exists():
                 raw = self._toml_decoder(filepath)

@@ -29,9 +29,9 @@ extra:
     - link: /en/
       name: en - English
     - link: /es/
-      name: es - español
+      name: es - Español
   generator: false
-copyright: Copyright &copy; 2020 - 2021
+copyright: Copyright &copy; 2021 - 2022
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
