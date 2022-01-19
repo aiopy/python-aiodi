@@ -12,7 +12,7 @@ arguments = { name = "%var(name)%", level = "%var(log_level)%" }
 
 [tool.aiodi.services."UserLogger"]
 type = "sample.libs.users.infrastructure.in_memory_user_logger.InMemoryUserLogger"
-arguments = { commands = "@logging.Logger" }
+arguments = { logger = "@logging.Logger" }
 
 [tool.aiodi.services."*"]
 _defaults = { autoregistration = { resource = "sample/libs/*", exclude = "sample/libs/users/{domain,infrastructure/in_memory_user_logger.py,infrastructure/*command.py}" } }
