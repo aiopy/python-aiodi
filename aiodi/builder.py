@@ -36,17 +36,7 @@ _DEFAULTS = {
         './../services.toml',
     ],
     'SERVICE': ...,
-    'SERVICE_DEFAULTS': {
-        'project_dir': None,
-        'autowire': True,
-        'autoconfigure': True,
-        'autoregistration': {
-            'resource': None,
-            'exclude': None,
-        },
-    },
     'VARIABLE': ...,
-    'VARIABLE_KEY': 'env',
 }
 
 _VARIABLE_METADATA_REGEX = r"%(static|env|var)\((str:|int:|float:|bool:)?([\w]+)(,\s{1}'.*?')?\)%"
@@ -73,10 +63,13 @@ class _VariableMetadata(NamedTuple):
 
 
 class _ServiceDefaults(NamedTuple):
-    project_dir: str
-    autowire: bool
-    autoconfigure: bool
-    autoregistration: Dict[str, Optional[str]]
+    project_dir: str = None  # type: ignore
+    autowire: bool = True
+    autoconfigure: bool = True
+    autoregistration: Dict[str, Optional[str]] = {
+        'resource': None,
+        'exclude': None,
+    }
 
 
 class _ServiceParameterMetadata(NamedTuple):
@@ -169,10 +162,10 @@ class ContainerBuilder:
             cwd=self._cwd, filenames=_DEFAULTS['FILENAMES'] if len(filenames or []) == 0 else filenames  # type: ignore
         )
         self._toml_decoder = toml_decoder
-        self._variables_key = str(_DEFAULTS['VARIABLE_KEY'] if var_key is None or len(var_key) == 0 else var_key)
+        self._variables_key = str('env' if var_key is None or len(var_key) == 0 else var_key)
         self._variables = {}
         self._services = {}
-        self._services_defaults = _ServiceDefaults(**_DEFAULTS['SERVICE_DEFAULTS'])  # type: ignore
+        self._services_defaults = _ServiceDefaults()
 
     def load(self) -> Container:
         raw = self._raw_toml_load()
@@ -180,15 +173,6 @@ class ContainerBuilder:
         self._parse_variables_wrapper(raw_variables=raw.variables)
 
         self._services.setdefault(self._variables_key, self._variables)
-
-        _defaults = {**_DEFAULTS['SERVICE_DEFAULTS'], **raw.services.get('_defaults', {})}  # type: ignore
-        self._services_defaults = _ServiceDefaults(
-            project_dir=_defaults['project_dir'],
-            autowire=_defaults['autowire'],
-            autoconfigure=_defaults['autoconfigure'],
-            autoregistration=_defaults['autoregistration'],
-        )
-        del raw.services['_defaults']
 
         self._parse_services_wrapper(raw_services=raw.services)
 
@@ -224,7 +208,7 @@ class ContainerBuilder:
         data = raw.get('tool', {}).get(self._tool_key, {})
         data.setdefault('variables', {})
         data.setdefault('services', {})
-        data.get('services').setdefault('_defaults', _DEFAULTS['SERVICE_DEFAULTS'])
+        data.get('services').setdefault('_defaults', self._services_defaults._asdict())
         project_dir = data.get('services').get('_defaults').get('project_dir')
         if project_dir is None or len(project_dir) == 0:
             data.get('services').get('_defaults')['project_dir'] = self._cwd
@@ -235,7 +219,11 @@ class ContainerBuilder:
                 project_dir = project_dir[1:]
             data.get('services').get('_defaults')['project_dir'] = project_dir
             self._cwd = Path(project_dir)
-        return _RawData(variables=data.get('variables'), services=data.get('services'))
+        rawdata = _RawData(variables=data.get('variables'), services=data.get('services'))
+        self._services_defaults = _ServiceDefaults(**rawdata.services.get('_defaults', {}))
+        if '_defaults' in rawdata.services:
+            del rawdata.services['_defaults']
+        return rawdata
 
     def _raw_toml_load(self) -> _RawData:
         if not self._toml_decoder:
