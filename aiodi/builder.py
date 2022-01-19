@@ -250,9 +250,10 @@ class ContainerBuilder:
                     raise InterruptedError(
                         'Reached limit of retries ({0}) per variable <{1}>!'.format(variable_limit_retries, err.key())
                     )
-                if err.key() in variables:
-                    del variables[err.key()]
-                variables_list = list({err.key(): (err.value(), err.times()), **variables}.items())
+                if err.key() not in variables:
+                    variables_list = list({**variables, err.key(): (err.value(), err.times())}.items())
+                else:
+                    variables_list = list(variables.items())
                 shuffle(variables_list)  # avoid re-processing same dependency
                 variables = dict(variables_list)
             finally:
@@ -413,9 +414,10 @@ class ContainerBuilder:
                     raise InterruptedError(
                         'Reached limit of retries ({0}) per service <{1}>!'.format(service_limit_retries, err.key())
                     )
-                if err.key() in services:
-                    del services[err.key()]
-                services_list = list({err.key(): (err.value(), err.times()), **services}.items())
+                if err.key() not in services:
+                    services_list = list({err.key(): (err.value(), err.times()), **services}.items())
+                else:
+                    services_list = list(services.items())
                 shuffle(services_list)  # avoid re-processing same dependency
                 services = dict(services_list)
             finally:
