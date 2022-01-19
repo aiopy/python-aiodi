@@ -1,0 +1,18 @@
+[tool.aiodi.variables]
+name = "%env(str:APP_NAME, 'sample')%"
+version = "%env(int:APP_VERSION, '1')%"
+log_level = "%env(APP_LEVEL, 'INFO')%"
+
+[tool.aiodi.services."_defaults"]
+project_dir = "../../.."
+
+[tool.aiodi.services."logging.Logger"]
+class = "sample.libs.utils.get_simple_logger"
+arguments = { name = "%var(name)%", level = "%var(log_level)%" }
+
+[tool.aiodi.services."UserLogger"]
+type = "sample.libs.users.infrastructure.in_memory_user_logger.InMemoryUserLogger"
+arguments = { logger = "@logging.Logger" }
+
+[tool.aiodi.services."*"]
+_defaults = { autoregistration = { resource = "sample/libs/*", exclude = "sample/libs/users/{domain,infrastructure/in_memory_user_logger.py,infrastructure/*command.py}" } }

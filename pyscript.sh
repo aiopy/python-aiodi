@@ -107,4 +107,4 @@ help | version | build | build_docs | deploy | install | fmt | security_analysis
 *) echo >&2 "pyscript: '$function' is not a pyscript command." && exit 1 ;;
 esac
 
-eval "_$function" "$@"
+"_$function" "$@"

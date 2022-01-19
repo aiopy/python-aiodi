@@ -1,4 +1,4 @@
-import pytest
+from pytest import raises
 
 from aiodi import Container
 
@@ -56,7 +56,7 @@ def test_container() -> None:
     assert container.get(my_another_svc) is my_another_svc
     assert len(container.get(_Test, instance_of=True)) == 3
 
-    pytest.raises(TypeError, lambda: container.get(key='services.foo', typ=str))
-    pytest.raises(KeyError, lambda: container.get(key='services.bar'))
+    raises(TypeError, lambda: container.get(key='services.foo', typ=str))
+    raises(KeyError, lambda: container.get(key='services.bar'))
 
     assert not container.__contains__('')

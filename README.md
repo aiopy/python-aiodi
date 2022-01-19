@@ -1,6 +1,12 @@
 # Python Dependency Injection library
 
-aiodi is a Container for the Dependency Injection in Python.
+aiodi is a modern Python Dependency Injection library that allows you to standardize and centralize the way objects are constructed in your application highly inspired on [PHP Symfony's DependencyInjection Component](https://symfony.com/components/DependencyInjection).
+
+Key Features:
+
+* **Native-based**: Implements [*PEP 621*](https://www.python.org/dev/peps/pep-0621/) storing project metadata in *pyproject.toml*.
+* **Dual mode**: Setting dependencies using *Python*  and using *configuration files*.
+* **Clean**: Wherever you want just use it, *no more decorators and defaults everywhere*.
 
 ## Installation
 
@@ -15,6 +21,56 @@ pip install aiodi
 - Visit [aiodi docs](https://ticdenis.github.io/python-aiodi/).
 
 ## Usage
+
+### with Configuration Files
+
+```toml
+# sample/pyproject.toml
+
+[tool.aiodi.variables]
+name = "%env(str:APP_NAME, 'sample')%"
+version = "%env(int:APP_VERSION, '1')%"
+log_level = "%env(APP_LEVEL, 'INFO')%"
+
+[tool.aiodi.services."_defaults"]
+project_dir = "../../.."
+
+[tool.aiodi.services."logging.Logger"]
+class = "sample.libs.utils.get_simple_logger"
+arguments = { name = "%var(name)%", level = "%var(log_level)%" }
+
+[tool.aiodi.services."UserLogger"]
+type = "sample.libs.users.infrastructure.in_memory_user_logger.InMemoryUserLogger"
+arguments = { commands = "@logging.Logger" }
+
+[tool.aiodi.services."*"]
+_defaults = { autoregistration = { resource = "sample/libs/*", exclude = "sample/libs/users/{domain,infrastructure/in_memory_user_logger.py,infrastructure/*command.py}" } }
+```
+
+```python
+# sample/apps/settings.py
+
+from typing import Optional
+from aiodi import Container, ContainerBuilder
+
+def container(filename: str, cwd: Optional[str] = None) -> Container:
+    return ContainerBuilder(filenames=[filename], cwd=cwd).load()
+```
+
+```python
+# sample/apps/cli/main.py
+
+from sample.apps.settings import container
+from logging import Logger
+
+def main() -> None:
+    di = container(filename='../../pyproject.toml')
+
+    di.get(Logger).info('Just simple call get with the type')
+    di.get('UserLogger').logger().info('Just simple call get with the service name')
+```
+
+### with Python
 
 ```python
 from abc import ABC, abstractmethod
