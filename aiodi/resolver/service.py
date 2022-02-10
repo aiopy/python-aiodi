@@ -18,7 +18,7 @@ _SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX = r"^([.\w/]+)?({[\w/.*,]+})?$"
 
 
 class ServiceDefaults(NamedTuple):
-    project_dir: str = None
+    project_dir: str = ''
     autowire: bool = True
     autoconfigure: bool = True
     autoregistration: Dict[str, Optional[str]] = {
@@ -53,7 +53,6 @@ class ServiceDefaults(NamedTuple):
 
     def compute_excludes(self) -> List[str]:
         raw_exclude: str = self.exclude()
-        project_dir: str = self.project_dir or ''
 
         if not raw_exclude:
             return []
@@ -64,7 +63,7 @@ class ServiceDefaults(NamedTuple):
 
         exclude_groups = exclude_matches[0].groups()
 
-        left = project_dir if exclude_groups[0] is None else project_dir + '/' + exclude_groups[0]
+        left = self.project_dir if exclude_groups[0] is None else self.project_dir + '/' + exclude_groups[0]
         left = '/'.join(list(Path(str(Path(left).absolute()).replace('../', '')).parts[-len(Path(left).parts) :]))[1:]
 
         rights: List[str] = []

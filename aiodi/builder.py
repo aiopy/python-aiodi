@@ -1,38 +1,28 @@
+from pathlib import Path
 from random import shuffle
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, MutableMapping, Optional, Tuple, Union
 
 from .container import Container
 from .logger import logger
 from .resolver import Resolver, ValueResolutionPostponed
-from .resolver.loader import LoadData, LoaderResolver
-from .resolver.path import PathData, PathResolver
-from .resolver.service import (
-    ServiceDefaults,
-    ServiceResolver,
-    prepare_services_to_parse,
-)
+from .resolver.loader import LoaderResolver, prepare_loader_to_parse
+from .resolver.path import PathResolver, prepare_path_to_parse
+from .resolver.service import ServiceResolver, prepare_services_to_parse
 from .resolver.variable import VariableResolver, prepare_variables_to_parse
 from .toml import TOMLDecoder, lazy_toml_decoder
 
 
 class ContainerBuilder:
+    _filenames: List[str]
+    _cwd: Optional[str]
     _debug: bool
     _resolvers: Dict[str, Resolver[Any, Any]]
-    _decoders: Dict[str, TOMLDecoder]
-    _variables_key: str
-    _services_key: str
-    _path_data: PathData
-    _service_defaults: ServiceDefaults
-    _items: Dict[str, Dict[str, Any]]
+    _decoders: Dict[str, Callable[[Union[str, Path]], Union[MutableMapping[str, Any], Dict[str, Any]]]]
+    _map_items: Callable[[Dict[str, Dict[str, Any]]], List[Tuple[str, Any, Dict[str, Any]]]]
 
     def __init__(
         self,
-        filenames: List[str] = [
-            './pyproject.toml',
-            './services.toml',
-            './../pyproject.toml',
-            './../services.toml',
-        ],
+        filenames: Optional[List[str]] = None,
         cwd: Optional[str] = None,
         *,
         debug: bool = False,
@@ -40,11 +30,18 @@ class ContainerBuilder:
         var_key: str = 'env',  # Container retro-compatibility
         toml_decoder: Optional[TOMLDecoder] = None
     ) -> None:
+        self._filenames = (
+            [
+                './pyproject.toml',
+                './services.toml',
+                './../pyproject.toml',
+                './../services.toml',
+            ]
+            if len(filenames or '') == 0
+            else filenames
+        )
+        self._cwd = None if len(cwd or '') == 0 else cwd
         self._debug = debug
-
-        self._variables_key = str('env' if var_key is None or len(var_key) == 0 else var_key)
-        self._services_key = 'services'
-
         self._resolvers = {
             'loader': LoaderResolver(),
             'path': PathResolver(),
@@ -54,56 +51,71 @@ class ContainerBuilder:
         self._decoders = {
             'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),
         }
-
-        self._path_data = self._resolvers['path'].parse_value(
-            metadata=self._resolvers['path'].extract_metadata(data={'cwd': cwd, 'filenames': filenames})
-        )
-
-        self._service_defaults = ServiceDefaults()
-        self._items = {
-            self._variables_key: {},
-            self._services_key: {},
-        }
+        self._map_items = lambda items: [
+            (key, val, {})
+            for key, val in {
+                str('env' if var_key is None or len(var_key) == 0 else var_key): items.get('variables'),
+                'services': items.get('services'),
+            }.items()
+        ]
 
     def load(self) -> Container:
-        data: LoadData = self._resolvers['loader'].parse_value(
-            metadata=self._resolvers['loader'].extract_metadata(
-                data={
-                    'service_defaults': self._service_defaults,
-                    'path_data': self._path_data,
-                    'decoders': self._decoders,
-                }
-            )
-        )
-
-        self._service_defaults = data.service_defaults
-        self._path_data = data.path_data
-
         extra = {
-            '_service_defaults': self._service_defaults,
-            'variables': self._items[self._variables_key],
-            'services': self._items[self._services_key],
+            'path_data': {},
+            'data': {},
+            '_service_defaults': None,
             'resolvers': self._resolvers,
+            'variables': {},
+            'services': {},
         }
 
         self._parse_values(
-            resolver_=self._resolvers['variable'],
-            storage=self._items[self._variables_key],
+            resolver=self._resolvers['path'],
+            storage=extra['path_data'],
             extra=extra,
-            items=prepare_variables_to_parse(resolver=self._resolvers['variable'], items=data.variables, extra=extra),
+            items=prepare_path_to_parse(
+                resolver=self._resolvers['path'], items={'cwd': self._cwd, 'filenames': self._filenames}, extra=extra
+            ),
         )
+        extra['path_data'] = extra['path_data']['value']
+
         self._parse_values(
-            resolver_=self._resolvers['service'],
-            storage=self._items[self._services_key],
+            resolver=self._resolvers['loader'],
+            storage=extra['data'],
             extra=extra,
-            items=prepare_services_to_parse(resolver=self._resolvers['service'], items=data.services, extra=extra),
+            items=prepare_loader_to_parse(
+                resolver=self._resolvers['loader'],
+                items={'path_data': extra['path_data'], 'decoders': self._decoders},
+                extra=extra,
+            ),
+        )
+        extra['data'] = extra['data']['value']
+
+        extra['_service_defaults'] = extra['data'].service_defaults
+
+        self._parse_values(
+            resolver=self._resolvers['variable'],
+            storage=extra['variables'],
+            extra=extra,
+            items=prepare_variables_to_parse(
+                resolver=self._resolvers['variable'], items=extra['data'].variables, extra=extra
+            ),
         )
 
-        return Container(items=[(key, val, {}) for key, val in self._items.items()])
+        self._parse_values(
+            resolver=self._resolvers['service'],
+            storage=extra['services'],
+            extra=extra,
+            items=prepare_services_to_parse(
+                resolver=self._resolvers['service'], items=extra['data'].services, extra=extra
+            ),
+        )
+
+        return Container(items=self._map_items({'variables': extra['variables'], 'services': extra['services']}))
 
     def _parse_values(
         self,
-        resolver_: Resolver[Any, Any],
+        resolver: Resolver[Any, Any],
         storage: Dict[str, Any],
         extra: Dict[str, Any],
         items: Dict[str, Any],
@@ -112,7 +124,7 @@ class ContainerBuilder:
         while len(items.keys()) > 0:
             try:
                 for name, (metadata, times) in items.items():
-                    storage.setdefault(name, resolver_.parse_value(metadata=metadata, retries=times, extra=extra))
+                    storage.setdefault(name, resolver.parse_value(metadata=metadata, retries=times, extra=extra))
             except ValueResolutionPostponed as err:
                 if self._debug:
                     logger.debug(err.__str__())

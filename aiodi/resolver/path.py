@@ -1,7 +1,7 @@
 from os.path import abspath, dirname
 from pathlib import Path
 from sys import executable, modules
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 from . import Resolver
 
@@ -52,3 +52,11 @@ class PathResolver(Resolver[PathMetadata, PathData]):
 
     def parse_value(self, metadata: PathMetadata, retries: int = -1, extra: Dict[str, Any] = {}) -> PathData:
         return PathData.from_metadata(metadata)
+
+
+def prepare_path_to_parse(
+    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]
+) -> Dict[str, Tuple[PathMetadata, int]]:
+    return {
+        'value': (resolver.extract_metadata(data=items), 0),
+    }
