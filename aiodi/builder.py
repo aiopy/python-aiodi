@@ -55,7 +55,7 @@ class ContainerBuilder:
             (key, val, {})
             for key, val in {
                 str('env' if var_key is None or len(var_key) == 0 else var_key): items.get('variables'),
-                'services': items.get('services'),
+                **items.get('services'),
             }.items()
         ]
 
