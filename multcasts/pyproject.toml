@@ -1,5 +1,0 @@
-[tool.aiodi.variables]
-version = "%env(int:APP_DEBUG, '1')%"
-
-[tool.aiodi.services."_defaults"]
-project_dir = "../../.."
