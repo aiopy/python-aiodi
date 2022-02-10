@@ -1,7 +1,9 @@
 import typing
+from abc import ABC
 from importlib import import_module
 from pathlib import Path
 from pkgutil import walk_packages
+from re import finditer
 from types import ModuleType
 
 typing_get_args = getattr(
@@ -36,12 +38,12 @@ def import_module_and_get_attr(name: str) -> typing.Type[typing.Any]:
     return getattr(globals()[mod], svc)
 
 
-def _types_in_module(module: ModuleType) -> typing.List[typing.Type[typing.Any]]:
+def types_in_module(module: ModuleType) -> typing.List[typing.Type[typing.Any]]:
     items = module.__dict__
     return [items[key] for key in items if (isinstance(items[key], type) and items[key].__module__ == module.__name__)]
 
 
-def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) -> typing.Dict[str, ModuleType]:
+def import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) -> typing.Dict[str, ModuleType]:
     full_name = path.replace('.py', '', 1).replace('/', '.')
     package = import_module(name=full_name)
 
@@ -63,7 +65,7 @@ def _import_submodules(path: str, recursive: bool, excludes: typing.List[Path]) 
         full_name = package.__name__ + '.' + name
         results[full_name] = import_module(name=full_name)
         if recursive and is_pkg:
-            results.update(_import_submodules(path=full_name.replace('.', '/'), recursive=recursive, excludes=excludes))
+            results.update(import_submodules(path=full_name.replace('.', '/'), recursive=recursive, excludes=excludes))
     return results
 
 
@@ -72,7 +74,7 @@ def import_module_and_get_attrs(
 ) -> typing.Dict[str, typing.Type[typing.Any]]:
     results: typing.Dict[str, typing.Type[typing.Any]] = {}
     path = '/'.join(list(Path(str(Path(name).absolute()).replace('../', '')).parts[-len(Path(name).parts) :]))
-    for name, module in _import_submodules(
+    for name, module in import_submodules(
         path=path[1:] if path.startswith('//') else path,
         recursive=recursive,
         excludes=[Path(exclude) for exclude in excludes if Path(exclude).exists()],
@@ -82,3 +84,15 @@ def import_module_and_get_attrs(
                 full_name = svc.__module__ + '.' + svc.__name__
                 results[full_name] = svc
     return results
+
+
+def raise_(err: BaseException) -> BaseException:
+    raise err  # pragma: no cover
+
+
+def re_finditer(pattern: typing.Any, string: typing.Any) -> typing.List[typing.Any]:
+    return list((finditer(pattern, string) if isinstance(string, str) else {}) or {})
+
+
+def is_abstract(val: typing.Any) -> bool:
+    return hasattr(val, '__mro__') and val.__mro__[1:][0] is ABC
