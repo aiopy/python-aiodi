@@ -29,6 +29,9 @@ class ServiceDefaults(NamedTuple):
     def resource(self) -> str:
         return self.autoregistration['resource'] or ''
 
+    def exclude(self) -> str:
+        return self.autoregistration['exclude'] or ''
+
     def has_resources(self) -> bool:
         if not self.resource():
             return False
@@ -49,11 +52,11 @@ class ServiceDefaults(NamedTuple):
         return resources
 
     def compute_excludes(self) -> List[str]:
-        if not self.autoregistration['exclude']:
-            return []
-
-        raw_exclude: str = self.autoregistration['exclude'] or ''
+        raw_exclude: str = self.exclude()
         project_dir: str = self.project_dir or ''
+
+        if not raw_exclude:
+            return []
 
         exclude_matches = re_finditer(pattern=_SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX, string=raw_exclude)
         if len(exclude_matches) == 0:
