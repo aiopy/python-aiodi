@@ -1,6 +1,6 @@
 [metadata]
 name = "aiodi"
-version = "1.1.0"
+version = "1.1.1"
 description = "Container for the Dependency Injection in Python."
 license = "MIT"
 authors = ["ticdenis <denisnavarroalcaide@outlook.es>"]
@@ -13,7 +13,7 @@ include = ["LICENSE", "README.md"]
 
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools==59.6.0", "wheel==0.37.0"]
+requires = ["setuptools==59.6.0", "wheel==0.37.1"]
 
 [tool.black]
 include = '\.pyi?$'
@@ -32,7 +32,7 @@ uuid = "1.30"
 [tool.pylint.master]
 jobs = "0"
 [tool.pylint.messages_control]
-disable = "C0103,C0114,C0115,C0116,C0201,C0205,C0209,C0301,C0415,E0401,E0611,E1136,R0902,R0903,R0912,R0914,R1704,R1717,R1725,W0102,W0108,W0212,W0235,W0236,W0603,W0611,W0622,W0703,W0707,W1202"
+disable = "C0103,C0114,C0115,C0116,C0201,C0205,C0209,C0301,C0415,E1102,E0401,E0611,E0711,E1136,R0201,R0902,R0903,R0912,R0914,R1704,R1717,R1725,W0102,W0108,W0212,W0235,W0236,W0603,W0611,W0622,W0703,W0707,W1202"
 
 [tool.pytest.ini_options]
 cache_dir = "var/cache/.pytest_cache"
