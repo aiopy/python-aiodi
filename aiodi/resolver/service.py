@@ -26,22 +26,23 @@ class ServiceDefaults(NamedTuple):
         'exclude': None,
     }
 
+    def resource(self) -> str:
+        return self.autoregistration['resource'] or ''
+
     def has_resources(self) -> bool:
-        if not self.autoregistration['resource'] or '':
+        if not self.resource():
             return False
         return True
 
     def compute_resources(self) -> List[str]:
-        resource = self.autoregistration['resource'] or ''
-        if not resource:
+        resources = [self.resource()]
+        if not resources[0]:
             return []
 
-        resources: List[str] = [resource]
-
-        if resource.endswith('/*'):
+        if resources[0].endswith('/*'):
             resources = [
                 include.replace(self.project_dir + '/', '', 1)
-                for include in glob(self.project_dir + '/' + resource)
+                for include in glob(self.project_dir + '/' + resources[0])
                 if not include.endswith('__pycache__') and not include.endswith('.pyc')
             ]
 
