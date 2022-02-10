@@ -2,19 +2,19 @@ from abc import ABC
 from glob import glob
 from inspect import Parameter, signature
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, cast
 
 from ..helpers import (
     import_module_and_get_attr,
     import_module_and_get_attrs,
     is_abstract,
     is_primitive,
-    raise_,
     re_finditer,
 )
 from . import Resolver, ValueNotFound, ValueResolutionPostponed
 
 _SERVICE_AUTOREGISTRATION_EXCLUDE_REGEX = r"^([.\w/]+)?({[\w/.*,]+})?$"
+_SVC_DEFAULTS = ...
 
 
 class ServiceDefaults(NamedTuple):
@@ -135,10 +135,10 @@ class ServiceMetadata(NamedTuple):
     type: Type[Any]
     clazz: Type[Any]
     arguments: Dict[str, Any]
-    params: List['ServiceMetadata.ParameterMetadata']
+    params: List[Any]
     defaults: ServiceDefaults
 
-    class ParameterMetadata(NamedTuple):
+    class ParameterMetadata(NamedTuple):  # type: ignore
         name: str
         source_kind: str
         type: Type[Any]
@@ -186,39 +186,39 @@ class ServiceResolutionPostponed(ValueResolutionPostponed[ServiceMetadata]):
 class ServiceResolver(Resolver[ServiceMetadata, Any]):
     @staticmethod
     def _define_service_type(name: str, typ: str, cls: str) -> Tuple[Type[Any], Type[Any]]:
-        if typ is ... and cls is ...:
-            cls = typ = import_module_and_get_attr(name=name)
-            return typ, cls
+        if typ is _SVC_DEFAULTS and cls is _SVC_DEFAULTS:  # type: ignore
+            cls = typ = import_module_and_get_attr(name=name)  # type: ignore
+            return typ, cls  # type: ignore
 
-        if typ is not ...:
-            typ = import_module_and_get_attr(name=typ)
-        if cls is not ...:
-            cls = import_module_and_get_attr(name=cls)
+        if typ is not _SVC_DEFAULTS:  # type: ignore
+            typ = import_module_and_get_attr(name=typ)  # type: ignore
+        if cls is not _SVC_DEFAULTS:  # type: ignore
+            cls = import_module_and_get_attr(name=cls)  # type: ignore
 
-        if typ is ...:
+        if typ is _SVC_DEFAULTS:  # type: ignore
             try:
-                typ = import_module_and_get_attr(name=name)
+                typ = import_module_and_get_attr(name=name)  # type: ignore
             except Exception:
                 typ = cls
-        if cls is ...:
+        if cls is _SVC_DEFAULTS:  # type: ignore
             cls = typ
 
-        if cls is not typ and not issubclass(signature(cls).return_annotation or cls, typ):
+        if cls is not typ and not issubclass(signature(cls).return_annotation or cls, typ):  # type: ignore
             raise TypeError('Class <{0}> return type must be <{1}>'.format(cls, typ))
 
-        return typ, cls
+        return typ, cls  # type: ignore
 
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any] = {}) -> ServiceMetadata:
-        key: str = data.get('key') or raise_(KeyError('Missing key "key" to extract service metadata'))
-        val: Any = data.get('val') or raise_(KeyError('Missing key "val" to extract service metadata'))
-        defaults: ServiceDefaults = data.get('defaults') or raise_(
-            KeyError('Missing key "defaults" to extract service metadata')
-        )
+    def extract_metadata(
+        self, data: Dict[str, Any], extra: Dict[str, Any] = {}  # pylint: disable=W0613
+    ) -> ServiceMetadata:
+        key = cast(str, data.get('key'))
+        val = data.get('val')
+        defaults = cast(ServiceDefaults, data.get('defaults'))
 
         typ, clazz = self._define_service_type(
             name=key,
-            typ=val['type'] if isinstance(val, dict) and 'type' in val else ...,
-            cls=val['class'] if isinstance(val, dict) and 'class' in val else ...,
+            typ=val['type'] if isinstance(val, dict) and 'type' in val else _SVC_DEFAULTS,
+            cls=val['class'] if isinstance(val, dict) and 'class' in val else _SVC_DEFAULTS,
         )
         kwargs = val['arguments'] if isinstance(val, dict) and 'arguments' in val else {}
         return ServiceMetadata(
@@ -234,15 +234,9 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
         )
 
     def parse_value(self, metadata: ServiceMetadata, retries: int = -1, extra: Dict[str, Any] = {}) -> Any:
-        _variables: Dict[str, Any] = extra.get('variables')
-        if _variables is None:
-            raise KeyError('Missing key "variables" to parse service value')
-        _services: Dict[str, Any] = extra.get('services')
-        if _services is None:
-            raise KeyError('Missing key "services" to parse service value')
-        variable_resolver: Resolver = extra.get('resolvers', {}).get('variable') or raise_(
-            KeyError('Missing key "resolvers.variable"')
-        )
+        _variables = cast(Dict[str, Any], extra.get('variables'))
+        _services = cast(Dict[str, Any], extra.get('services'))
+        variable_resolver = cast(Resolver, extra.get('resolvers', {}).get('variable'))
 
         parameters: Dict[str, Any] = {}
         for param in metadata.params:
@@ -285,9 +279,7 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
 def prepare_services_to_parse(
     resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]
 ) -> Dict[str, Tuple['ServiceMetadata', int]]:
-    _service_defaults: ServiceDefaults = extra.get('_service_defaults') or raise_(
-        KeyError('Missing key "_service_defaults"')
-    )
+    _service_defaults = cast(ServiceDefaults, extra.get('_service_defaults'))
 
     services: Dict[str, Tuple['ServiceMetadata', int]] = {}
     for key, val in items.items():

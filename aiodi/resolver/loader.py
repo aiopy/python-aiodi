@@ -18,7 +18,7 @@ class LoaderMetadata(NamedTuple):
             if filepath.is_file() and filepath.exists():
                 ext = filepath.suffix[1:]
                 if ext not in self.decoders:
-                    raise NotImplemented('Missing {0} decoder to load dependencies'.format(ext.upper()))
+                    raise NotImplemented('Missing {0} decoder to load dependencies'.format(ext.upper()))  # type: ignore
                 data = self.decoders[ext](filepath)
 
                 data.setdefault('variables', {})
@@ -37,8 +37,8 @@ class LoadData(NamedTuple):
     def from_metadata(cls, metadata: LoaderMetadata, data: OutputData) -> 'LoadData':
         path_data = metadata.path_data
 
-        defaults = data.get('services').get('_defaults', ServiceDefaults()._asdict())
-        project_dir = defaults.get('project_dir')
+        defaults = data['services'].get('_defaults', ServiceDefaults()._asdict())
+        project_dir = defaults['project_dir']
 
         if len(project_dir or '') == 0:
             defaults['project_dir'] = path_data.cwd
@@ -51,29 +51,36 @@ class LoadData(NamedTuple):
 
             defaults['project_dir'] = project_dir
 
-        if '_defaults' in data.get('services'):
-            del data.get('services')['_defaults']
+        if '_defaults' in data['services']:
+            del data['services']['_defaults']
 
         return cls(
-            variables=data.get('variables'),
-            services=data.get('services'),
+            variables=data['variables'],
+            services=data['services'],
             service_defaults=ServiceDefaults(**defaults),
         )
 
 
 class LoaderResolver(Resolver[LoaderMetadata, LoadData]):
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any] = {}) -> LoaderMetadata:
+    def extract_metadata(
+        self, data: Dict[str, Any], extra: Dict[str, Any] = {}  # pylint: disable=W0613
+    ) -> LoaderMetadata:
         return LoaderMetadata(
-            path_data=data.get('path_data'),
-            decoders=data.get('decoders'),
+            path_data=data['path_data'],
+            decoders=data['decoders'],
         )
 
-    def parse_value(self, metadata: LoaderMetadata, retries: int = -1, extra: Dict[str, Any] = {}) -> LoadData:
+    def parse_value(
+        self,
+        metadata: LoaderMetadata,
+        retries: int = -1,  # pylint: disable=W0613
+        extra: Dict[str, Any] = {},  # pylint: disable=W0613
+    ) -> LoadData:
         return LoadData.from_metadata(metadata=metadata, data=metadata.decode())
 
 
 def prepare_loader_to_parse(
-    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]
+    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
 ) -> Dict[str, Tuple[LoaderMetadata, int]]:
     return {
         'value': (resolver.extract_metadata(data=items), 0),

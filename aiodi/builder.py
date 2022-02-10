@@ -5,9 +5,13 @@ from typing import Any, Callable, Dict, List, MutableMapping, Optional, Tuple, U
 from .container import Container
 from .logger import logger
 from .resolver import Resolver, ValueResolutionPostponed
-from .resolver.loader import LoaderResolver, prepare_loader_to_parse
+from .resolver.loader import LoadData, LoaderResolver, prepare_loader_to_parse
 from .resolver.path import PathResolver, prepare_path_to_parse
-from .resolver.service import ServiceResolver, prepare_services_to_parse
+from .resolver.service import (
+    ServiceDefaults,
+    ServiceResolver,
+    prepare_services_to_parse,
+)
 from .resolver.variable import VariableResolver, prepare_variables_to_parse
 from .toml import TOMLDecoder, lazy_toml_decoder
 
@@ -37,7 +41,7 @@ class ContainerBuilder:
                 './../pyproject.toml',
                 './../services.toml',
             ]
-            if len(filenames or '') == 0
+            if filenames is None or len(filenames) == 0
             else filenames
         )
         self._cwd = None if len(cwd or '') == 0 else cwd
@@ -51,19 +55,23 @@ class ContainerBuilder:
         self._decoders = {
             'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),
         }
-        self._map_items = lambda items: [
-            (key, val, {})
-            for key, val in {
-                str('env' if var_key is None or len(var_key) == 0 else var_key): items.get('variables'),
-                **items.get('services'),
-            }.items()
-        ]
+
+        def map_items(items: Dict[str, Dict[str, Any]]) -> List[Tuple[str, Any, Dict[str, Any]]]:
+            return [
+                (key, val, {})
+                for key, val in {
+                    str('env' if var_key is None or len(var_key) == 0 else var_key): items['variables'],
+                    **items['services'],
+                }.items()
+            ]
+
+        self._map_items = map_items  # type: ignore
 
     def load(self) -> Container:
-        extra = {
+        extra: Dict[str, Any] = {
             'path_data': {},
             'data': {},
-            '_service_defaults': None,
+            '_service_defaults': ServiceDefaults(),
             'resolvers': self._resolvers,
             'variables': {},
             'services': {},
@@ -89,29 +97,28 @@ class ContainerBuilder:
                 extra=extra,
             ),
         )
-        extra['data'] = extra['data']['value']
+        data: LoadData = extra['data']['value']
+        extra['data'] = data
 
-        extra['_service_defaults'] = extra['data'].service_defaults
+        extra['_service_defaults'] = data.service_defaults
 
         self._parse_values(
             resolver=self._resolvers['variable'],
             storage=extra['variables'],
             extra=extra,
-            items=prepare_variables_to_parse(
-                resolver=self._resolvers['variable'], items=extra['data'].variables, extra=extra
-            ),
+            items=prepare_variables_to_parse(resolver=self._resolvers['variable'], items=data.variables, extra=extra),
         )
 
         self._parse_values(
             resolver=self._resolvers['service'],
             storage=extra['services'],
             extra=extra,
-            items=prepare_services_to_parse(
-                resolver=self._resolvers['service'], items=extra['data'].services, extra=extra
-            ),
+            items=prepare_services_to_parse(resolver=self._resolvers['service'], items=data.services, extra=extra),
         )
 
-        return Container(items=self._map_items({'variables': extra['variables'], 'services': extra['services']}))
+        return Container(
+            items=self._map_items({'variables': extra['variables'], 'services': extra['services']})  # type: ignore
+        )
 
     def _parse_values(
         self,

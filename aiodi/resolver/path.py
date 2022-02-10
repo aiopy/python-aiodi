@@ -47,15 +47,22 @@ class PathData(NamedTuple):
 
 
 class PathResolver(Resolver[PathMetadata, PathData]):
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any] = {}) -> PathMetadata:
+    def extract_metadata(
+        self, data: Dict[str, Any], extra: Dict[str, Any] = {}  # pylint: disable=W0613
+    ) -> PathMetadata:
         return PathMetadata(cwd=data.get('cwd', None), filenames=data.get('filenames', []))
 
-    def parse_value(self, metadata: PathMetadata, retries: int = -1, extra: Dict[str, Any] = {}) -> PathData:
+    def parse_value(
+        self,
+        metadata: PathMetadata,
+        retries: int = -1,  # pylint: disable=W0613
+        extra: Dict[str, Any] = {},  # pylint: disable=W0613
+    ) -> PathData:
         return PathData.from_metadata(metadata)
 
 
 def prepare_path_to_parse(
-    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]
+    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
 ) -> Dict[str, Tuple[PathMetadata, int]]:
     return {
         'value': (resolver.extract_metadata(data=items), 0),
