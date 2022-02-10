@@ -1,6 +1,6 @@
 [metadata]
 name = "aiodi"
-version = "1.1.0"
+version = "1.1.1"
 description = "Container for the Dependency Injection in Python."
 license = "MIT"
 authors = ["ticdenis <denisnavarroalcaide@outlook.es>"]
