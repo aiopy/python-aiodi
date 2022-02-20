@@ -73,7 +73,7 @@ class ServiceDefaults(NamedTuple):
         return [left] if len(rights) == 0 else rights
 
     def compute_services(
-        self, resolver: Resolver[Any, Any], resources: List[str], excludes: List[str]
+        self, resolver: Resolver[Any, Any], resources: List[str], excludes: List[str], extra: Dict[str, Any]
     ) -> Dict[str, Tuple['ServiceMetadata', int]]:
         names: List[str] = []
         for include in resources:
@@ -100,7 +100,8 @@ class ServiceDefaults(NamedTuple):
                             autowire=self.autowire,
                             autoconfigure=self.autoconfigure,
                         ),
-                    }
+                    },
+                    extra=extra,
                 ),
                 0,
             )
@@ -208,9 +209,7 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
 
         return typ, cls  # type: ignore
 
-    def extract_metadata(
-        self, data: Dict[str, Any], extra: Dict[str, Any] = {}  # pylint: disable=W0613
-    ) -> ServiceMetadata:
+    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any]) -> ServiceMetadata:  # pylint: disable=W0613
         key = cast(str, data.get('key'))
         val = data.get('val')
         defaults = cast(ServiceDefaults, data.get('defaults'))
@@ -233,7 +232,7 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
             defaults=defaults,
         )
 
-    def parse_value(self, metadata: ServiceMetadata, retries: int = -1, extra: Dict[str, Any] = {}) -> Any:
+    def parse_value(self, metadata: ServiceMetadata, retries: int, extra: Dict[str, Any]) -> Any:
         _variables = cast(Dict[str, Any], extra.get('variables'))
         _services = cast(Dict[str, Any], extra.get('services'))
         variable_resolver = cast(Resolver, extra.get('resolvers', {}).get('variable'))
@@ -248,8 +247,10 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
                         data={
                             'key': '@{0}:{1}'.format(metadata.name, param.name),
                             'val': metadata.arguments[param.name],
-                        }
+                        },
+                        extra=extra,
                     ),
+                    retries=-1,
                     extra={'variables': _variables},
                 )
             elif param.source_kind == 'svc':
@@ -287,11 +288,14 @@ def prepare_services_to_parse(
         if defaults.has_resources():
             services.update(
                 defaults.compute_services(
-                    resolver=resolver, resources=defaults.compute_resources(), excludes=defaults.compute_excludes()
+                    resolver=resolver,
+                    resources=defaults.compute_resources(),
+                    excludes=defaults.compute_excludes(),
+                    extra=extra,
                 )
             )
         else:
-            metadata = resolver.extract_metadata(data={'key': key, 'val': val, 'defaults': defaults})
+            metadata = resolver.extract_metadata(data={'key': key, 'val': val, 'defaults': defaults}, extra=extra)
             if is_abstract(metadata.type):
                 raise TypeError('Can not instantiate abstract class <{0}>!'.format(metadata.name))
             services[key] = (metadata, 0)

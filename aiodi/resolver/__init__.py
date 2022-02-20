@@ -43,7 +43,7 @@ class ValueResolutionPostponed(Exception, Generic[Metadata]):
 
 class Resolver(ABC, Generic[Metadata, Value]):
     @abstractmethod
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any] = {}) -> Metadata:
+    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any]) -> Metadata:
         """
         Extract metadata from data
 
@@ -53,7 +53,7 @@ class Resolver(ABC, Generic[Metadata, Value]):
         """
 
     @abstractmethod
-    def parse_value(self, metadata: Metadata, retries: int = -1, extra: Dict[str, Any] = {}) -> Value:
+    def parse_value(self, metadata: Metadata, retries: int, extra: Dict[str, Any]) -> Value:
         """
         Parse value from metadata
 
