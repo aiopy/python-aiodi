@@ -62,9 +62,7 @@ class LoadData(NamedTuple):
 
 
 class LoaderResolver(Resolver[LoaderMetadata, LoadData]):
-    def extract_metadata(
-        self, data: Dict[str, Any], extra: Dict[str, Any] = {}  # pylint: disable=W0613
-    ) -> LoaderMetadata:
+    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any]) -> LoaderMetadata:  # pylint: disable=W0613
         return LoaderMetadata(
             path_data=data['path_data'],
             decoders=data['decoders'],
@@ -73,8 +71,8 @@ class LoaderResolver(Resolver[LoaderMetadata, LoadData]):
     def parse_value(
         self,
         metadata: LoaderMetadata,
-        retries: int = -1,  # pylint: disable=W0613
-        extra: Dict[str, Any] = {},  # pylint: disable=W0613
+        retries: int,  # pylint: disable=W0613
+        extra: Dict[str, Any],  # pylint: disable=W0613
     ) -> LoadData:
         return LoadData.from_metadata(metadata=metadata, data=metadata.decode())
 
@@ -83,5 +81,5 @@ def prepare_loader_to_parse(
     resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
 ) -> Dict[str, Tuple[LoaderMetadata, int]]:
     return {
-        'value': (resolver.extract_metadata(data=items), 0),
+        'value': (resolver.extract_metadata(data=items, extra=extra), 0),
     }

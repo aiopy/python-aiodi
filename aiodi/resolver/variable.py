@@ -11,7 +11,7 @@ STATIC_TEMPLATE: str = "%static({0}:{1}, '{2}')%"
 class VariableMetadata(NamedTuple):
     name: str
     value: Any
-    matches: List['VariableMetadata.MatchMetadata'] = []  # type: ignore
+    matches: List['VariableMetadata.MatchMetadata']  # type: ignore
 
     class MatchMetadata(NamedTuple):  # type: ignore
         source_kind: str
@@ -49,7 +49,7 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
         return __call__(string=val) or __call__(string=STATIC_TEMPLATE.format(type(val).__name__, key, val))
 
     def extract_metadata(
-        self, data: Dict[str, Any], extra: Dict[str, Any] = {}  # pylint: disable=W0613
+        self, data: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
     ) -> VariableMetadata:
         key: str = data.get('key') or raise_(KeyError('Missing key "key" to extract variable metadata'))  # type: ignore
         val: Any = data.get('val') or raise_(KeyError('Missing key "val" to extract variable metadata'))
@@ -64,8 +64,9 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
         )
 
     def parse_value(
-        self, metadata: VariableMetadata, retries: int = -1, extra: Dict[str, Any] = {}  # pylint: disable=W0613
+        self, metadata: VariableMetadata, retries: int, extra: Dict[str, Any]  # pylint: disable=W0613
     ) -> Any:
+        extra = {} if extra is None or not isinstance(extra, dict) else extra
         _variables: Dict[str, Any] = extra.get('variables')  # type: ignore
         if _variables is None:
             raise KeyError('Missing key "variables" to parse variable value')
@@ -100,4 +101,9 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
 def prepare_variables_to_parse(
     resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
 ) -> Dict[str, Tuple[VariableMetadata, int]]:
-    return dict([(key, (resolver.extract_metadata(data={'key': key, 'val': val}), 0)) for key, val in items.items()])
+    return dict(
+        [
+            (key, (resolver.extract_metadata(data={'key': key, 'val': val}, extra=extra), 0))
+            for key, val in items.items()
+        ]
+    )
