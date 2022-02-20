@@ -4,8 +4,9 @@ from typing import Any, Dict, List, Match, NamedTuple, Tuple, Type
 from ..helpers import raise_, re_finditer
 from . import Resolver, ValueNotFound, ValueResolutionPostponed
 
-REGEX = r"%(static|env|var)\((str:|int:|float:|bool:)?([\w]+)(,\s{1}'.*?')?\)%"
+REGEX = r"%(static|env|var)\(([str:int:float:bool:]*?)([\w]+)(,\s{1}'.*?')?\)%"
 STATIC_TEMPLATE: str = "%static({0}:{1}, '{2}')%"
+_VAR_DEFAULTS = ...
 
 
 class VariableMetadata(NamedTuple):
@@ -15,18 +16,24 @@ class VariableMetadata(NamedTuple):
 
     class MatchMetadata(NamedTuple):  # type: ignore
         source_kind: str
-        type: Type[Any]
+        types: List[Type[Any]]
         source_name: str
         default: Any
         match: Match
 
         @classmethod
         def from_match(cls, match: Match) -> 'VariableMetadata.MatchMetadata':
+            raw_types = (
+                ['str']
+                if match.groups()[1] is None or len(str(match.groups()[1])) == 0
+                else [s for s in str(match.groups()[1]).split(':') if s.strip() != '']
+            )
+            raw_default = _VAR_DEFAULTS if match.groups()[3] is None else str(match.groups()[3])[3:-1]
             return cls(
                 source_kind=str(match.groups()[0]),
-                type=str if match.groups()[1] is None else globals()['__builtins__'][str(match.groups()[1])[:-1]],
+                types=[globals()['__builtins__'][raw_type] for raw_type in raw_types],
                 source_name=str(match.groups()[2]),
-                default=None if match.groups()[3] is None else str(match.groups()[3])[3:-1],
+                default=None if isinstance(raw_default, str) and raw_default == 'None' else raw_default,
                 match=match,
             )
 
@@ -34,6 +41,11 @@ class VariableMetadata(NamedTuple):
 class VariableNotFound(ValueNotFound):
     def __init__(self, name: str) -> None:
         super().__init__(kind='Variable', name=name)
+
+
+class EnvironmentVariableNotFound(ValueNotFound):
+    def __init__(self, name: str) -> None:
+        super().__init__(kind='EnvironmentVariable', name=name)
 
 
 class VariableResolutionPostponed(ValueResolutionPostponed[VariableMetadata]):
@@ -77,7 +89,12 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
             if metadata_.source_kind == 'static':
                 typ_val = metadata_.default
             elif metadata_.source_kind == 'env':
-                typ_val = getenv(key=metadata_.source_name, default=metadata_.default or '')
+                typ_val = getenv(key=metadata_.source_name, default=metadata_.default)
+                if typ_val is None:
+                    # can only concatenate str to str
+                    return typ_val
+                if metadata_.default is _VAR_DEFAULTS and typ_val == metadata_.default:
+                    raise EnvironmentVariableNotFound(name=metadata_.source_name)
             elif metadata_.source_kind == 'var':
                 if metadata_.source_name not in _variables:
                     if retries != -1:
@@ -94,7 +111,9 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
                 values += metadata.value[metadata_.match.end() :]
         value: Any = ''.join(values)
         if len(metadata.matches) == 1:
-            value = metadata.matches[0].type(value)
+            # multiple casting
+            for type_ in reversed(metadata.matches[0].types):
+                value = type_(value)
         return value
 
 
