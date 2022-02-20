@@ -20,6 +20,8 @@ def test_container() -> None:
     assert 'env.log_level' in di and di.get('env.log_level', typ=str) == 'INFO'
     assert 'env.name' in di and di.get('env.name', typ=str) == 'sample'
     assert 'env.version' in di and di.get('env.version', typ=int) == 1
+    assert 'env.debug' in di and di.get('env.debug', typ=bool) is False
+    assert 'env.text' in di and di.get('env.text', typ=str) == 'Hello World'
 
     assert 'UserLogger' in di and di.get('UserLogger', typ=InMemoryUserLogger)
     assert 'logging.Logger' in di and di.get(Logger)

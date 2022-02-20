@@ -31,6 +31,8 @@ pip install aiodi
 name = "%env(str:APP_NAME, 'sample')%"
 version = "%env(int:APP_VERSION, '1')%"
 log_level = "%env(APP_LEVEL, 'INFO')%"
+debug = "%env(bool:int:APP_DEBUG, '0')%"
+text = "Hello World"
 
 [tool.aiodi.services."_defaults"]
 project_dir = "../../.."
