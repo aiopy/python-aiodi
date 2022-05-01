@@ -25,10 +25,10 @@ jobs:
         run: sh pyscript.sh install
       - name: security-analysis
         timeout-minutes: 1
-        run: sh pyscript.sh security_analysis
+        run: sh pyscript.sh security-analysis
       - name: static-analysis
         timeout-minutes: 1
-        run: sh pyscript.sh static_analysis
+        run: sh pyscript.sh static-analysis
       - name: test
         timeout-minutes: 3
         run: sh pyscript.sh test
