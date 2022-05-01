@@ -157,4 +157,4 @@ if __name__ == '__main__':
 
 ## Licencia
 
-[MIT](https://github.com/ticdenis/python-aiodi/blob/master/LICENSE)
+[MIT](https://github.com/aiopy/python-aiodi/blob/master/LICENSE)

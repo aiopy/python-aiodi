@@ -1,10 +1,10 @@
 services:
-  test:
+  aiodi:
     build:
       context: .
       dockerfile: Dockerfile
       target: development
-    command: coverage
+    image: ghcr.io/aiopy/python-aiodi:${VERSION:-latest}
     volumes:
       - .:/app
 

@@ -38,8 +38,10 @@ class ContainerBuilder:
             [
                 './pyproject.toml',
                 './services.toml',
+                './aiodi.toml',
                 './../pyproject.toml',
                 './../services.toml',
+                './../aiodi.toml',
             ]
             if filenames is None or len(filenames) == 0
             else filenames

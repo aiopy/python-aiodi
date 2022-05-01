@@ -1,6 +1,6 @@
 site_name: aiodi
 site_description: Python Dependency Injection library
-site_url: https://ticdenis.github.io/python-aiodi/
+site_url: https://aiopy.github.io/python-aiodi/
 theme:
   name: material
   palette:
@@ -12,8 +12,8 @@ theme:
     - search.highlight
   icon:
     repo: fontawesome/brands/github-alt
-repo_name: ticdenis/python-aiodi
-repo_url: https://github.com/ticdenis/python-aiodi
+repo_name: aiopy/python-aiodi
+repo_url: https://github.com/aiopy/python-aiodi
 nav:
   - aiodi: index.md
   - Languages:
@@ -24,14 +24,14 @@ extra:
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/in/denisnavarroalcaide
     - icon: fontawesome/brands/github
-      link: https://github.com/ticdenis
+      link: https://github.com/aiopy
   alternate:
     - link: /en/
       name: en - English
     - link: /es/
       name: es - Español
   generator: false
-copyright: Copyright &copy; 2021 - 2022
+copyright: Copyright &copy; 2022
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences

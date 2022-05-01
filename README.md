@@ -18,7 +18,7 @@ pip install aiodi
 
 ## Documentation
 
-- Visit [aiodi docs](https://ticdenis.github.io/python-aiodi/).
+- Visit [aiodi docs](https://aiopy.github.io/python-aiodi/).
 
 ## Usage
 
@@ -173,4 +173,4 @@ Please make sure to update tests as appropriate.
 
 ## License
 
-[MIT](https://github.com/ticdenis/python-aiodi/blob/master/LICENSE)
+[MIT](https://github.com/aiopy/python-aiodi/blob/master/LICENSE)

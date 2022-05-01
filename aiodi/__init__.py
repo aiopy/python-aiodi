@@ -3,7 +3,7 @@
 from .builder import ContainerBuilder
 from .container import Container, ContainerKey
 
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 
 __all__ = (
     # di
