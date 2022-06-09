@@ -21,7 +21,7 @@ _T = TypeVar('_T')
 ContainerKey = Union[str, Type[Any], object]
 
 
-class Container(dict):
+class Container(Dict[Any, Any]):
     debug: bool = False
     _parameter_resolvers: List[Callable[['Container'], Any]] = []
 
@@ -130,7 +130,7 @@ class Container(dict):
             val = here[keys[-1]]
             if typ and not isinstance(val, (typ,)):
                 raise TypeError('<{0}: {1}> does not exist in container'.format(original_key, typ.__name__))
-            return val
+            return val  # type: ignore
         except KeyError:
             raise KeyError('<{0}> does not exist in container'.format(original_key))
 
@@ -245,7 +245,7 @@ class Container(dict):
 
     @staticmethod
     def _sanitize_item_parameters_before_resolve_or_postpone(
-        meta_params: AbstractSet, params: Dict[str, Any]
+        meta_params: AbstractSet[Any], params: Dict[str, Any]
     ) -> Dict[str, Any]:
         for meta_param in meta_params:
             name: str = meta_param[0]

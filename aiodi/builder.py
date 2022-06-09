@@ -55,7 +55,7 @@ class ContainerBuilder:
             'variable': VariableResolver(),
         }
         self._decoders = {
-            'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),
+            'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),  # type: ignore
         }
 
         def map_items(items: Dict[str, Dict[str, Any]]) -> List[Tuple[str, Any, Dict[str, Any]]]:
@@ -136,7 +136,7 @@ class ContainerBuilder:
                     storage.setdefault(name, resolver.parse_value(metadata=metadata, retries=times, extra=extra))
             except ValueResolutionPostponed as err:
                 if self._debug:
-                    logger.debug(err.__str__())
+                    logger.debug(str(err))
                 if err.times() == limit_retries:
                     raise InterruptedError('Reached limit of retries ({0}) per <{1}>!'.format(limit_retries, err.key()))
                 if err.key() not in items:

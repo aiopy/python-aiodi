@@ -35,7 +35,7 @@ def import_module_and_get_attr(name: str) -> typing.Type[typing.Any]:
     mod = '.'.join(name.split('.')[:-1])
     svc = name.split('.')[-1]
     globals()[mod] = import_module(name=mod)
-    return getattr(globals()[mod], svc)
+    return getattr(globals()[mod], svc)  # type: ignore
 
 
 def types_in_module(module: ModuleType) -> typing.List[typing.Type[typing.Any]]:

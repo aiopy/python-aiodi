@@ -19,10 +19,10 @@ class VariableMetadata(NamedTuple):
         types: List[Type[Any]]
         source_name: str
         default: Any
-        match: Match
+        match: Match[Any]
 
         @classmethod
-        def from_match(cls, match: Match) -> 'VariableMetadata.MatchMetadata':
+        def from_match(cls, match: Match[Any]) -> 'VariableMetadata.MatchMetadata':
             raw_types = (
                 ['str']
                 if match.groups()[1] is None or len(str(match.groups()[1])) == 0
@@ -54,8 +54,8 @@ class VariableResolutionPostponed(ValueResolutionPostponed[VariableMetadata]):
 
 class VariableResolver(Resolver[VariableMetadata, Any]):
     @staticmethod
-    def _metadata_matches(key: str, val: Any) -> List[Match]:
-        def __call__(string: Any) -> List[Match]:
+    def _metadata_matches(key: str, val: Any) -> List[Match[Any]]:
+        def __call__(string: Any) -> List[Match[Any]]:
             return re_finditer(pattern=REGEX, string=string)
 
         return __call__(string=val) or __call__(string=STATIC_TEMPLATE.format(type(val).__name__, key, val))

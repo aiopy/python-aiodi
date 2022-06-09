@@ -235,7 +235,7 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
     def parse_value(self, metadata: ServiceMetadata, retries: int, extra: Dict[str, Any]) -> Any:
         _variables = cast(Dict[str, Any], extra.get('variables'))
         _services = cast(Dict[str, Any], extra.get('services'))
-        variable_resolver = cast(Resolver, extra.get('resolvers', {}).get('variable'))
+        variable_resolver = cast(Resolver[Any, Any], extra.get('resolvers', {}).get('variable'))
 
         parameters: Dict[str, Any] = {}
         for param in metadata.params:
