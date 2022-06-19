@@ -1,5 +1,9 @@
 # Python Dependency Injection library
 
+[![PyPI version](https://badge.fury.io/py/aiodi.svg)](https://badge.fury.io/py/aiodi)
+[![PyPIDownloads](https://static.pepy.tech/badge/aiodi)](https://pepy.tech/project/aiodi)
+[![CI](https://github.com/aiopy/python-aiodi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aiopy/python-aiodi/actions/workflows/ci.yml)
+
 aiodi is a modern Python Dependency Injection library that allows you to standardize and centralize the way objects are constructed in your application highly inspired on [PHP Symfony's DependencyInjection Component](https://symfony.com/components/DependencyInjection).
 
 Key Features:
