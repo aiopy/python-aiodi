@@ -1,0 +1,52 @@
+copyright: 'Copyright &copy; 2022'
+
+docs_dir: '../../docs/en'
+
+extra:
+  alternate:
+    - lang: en
+    - link: /python-aiodi/en/
+      name: English
+    - link: /python-aiodi/es/
+      name: Spanish
+      lang: es
+  generator: false
+  social:
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/denisnavarroalcaide
+    - icon: fontawesome/brands/github
+      link: https://github.com/aiopy
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+nav:
+  - aiodi: index.md
+
+plugins:
+  - search:
+      lang: en
+
+repo_name: 'aiopy/python-aiodi'
+repo_url: 'https://github.com/aiopy/python-aiodi'
+
+site_description: 'Python Dependency Injection library'
+site_dir: '../../generated/en'
+site_name: 'aiodi'
+site_url: 'https://aiopy.github.io/python-aiodi/'
+
+theme:
+  features:
+    - search.suggest
+    - search.highlight
+  icon:
+    repo: fontawesome/brands/github-alt
+  language: en
+  name: material
+  palette:
+    - accent: pink
+      primary: red
+      scheme: default
