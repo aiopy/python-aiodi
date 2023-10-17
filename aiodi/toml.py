@@ -7,11 +7,11 @@ TOMLDecoder = Callable[[TOMLPath], TOMLDecoded]
 
 
 def _decoder_from_builtin_lib() -> TOMLDecoder:
-    from tomllib import load  # type: ignore
+    from tomllib import load
 
     def decorator(path: TOMLPath) -> TOMLDecoded:
         with open(path, 'rb') as file:
-            return load(file)  # type: ignore
+            return load(file)
 
     return decorator
 
