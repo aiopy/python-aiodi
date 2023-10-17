@@ -1,4 +1,4 @@
-FROM docker.io/library/python:3.7-slim AS production
+FROM docker.io/library/python:3.8-slim AS production
 
 WORKDIR /app
 
