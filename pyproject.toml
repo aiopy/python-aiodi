@@ -120,6 +120,7 @@ dependencies = true
 [tool.mypy]
 strict = true
 cache_dir = "var/cache/.mypy_cache"
+ignore_missing_imports = true
 
 [tool.pylint.master]
 jobs = "0"
