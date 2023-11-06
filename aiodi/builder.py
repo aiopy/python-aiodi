@@ -55,7 +55,7 @@ class ContainerBuilder:
             'variable': VariableResolver(),
         }
         self._decoders = {
-            'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),
+            'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),  # type: ignore
         }
 
         def map_items(items: Dict[str, Dict[str, Any]]) -> List[Tuple[str, Any, Dict[str, Any]]]:
