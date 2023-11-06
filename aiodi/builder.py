@@ -67,7 +67,7 @@ class ContainerBuilder:
                 }.items()
             ]
 
-        self._map_items = map_items  # type: ignore
+        self._map_items = map_items
 
     def load(self) -> Container:
         extra: Dict[str, Any] = {
