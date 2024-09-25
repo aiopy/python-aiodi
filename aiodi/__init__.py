@@ -4,7 +4,7 @@
 from .builder import ContainerBuilder
 from .container import Container, ContainerKey
 
-__version__ = '1.1.4'
+__version__ = '1.2.0'
 
 __all__ = (
     # di
