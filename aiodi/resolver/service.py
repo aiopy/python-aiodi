@@ -168,9 +168,7 @@ class ServiceMetadata(NamedTuple):
                 default=(
                     arguments[str(param[0])]
                     if str(param[0]) in arguments and arguments[str(param[0])].startswith('@')
-                    else None
-                    if param[1].default is Parameter.empty
-                    else param[1].default
+                    else None if param[1].default is Parameter.empty else param[1].default
                 ),
             )
 
@@ -188,8 +186,8 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
     @staticmethod
     def _define_service_type(name: str, typ: str, cls: str) -> Tuple[Type[Any], Type[Any]]:
         if typ is _SVC_DEFAULTS and cls is _SVC_DEFAULTS:  # type: ignore
-            cls = typ = import_module_and_get_attr(name=name)  # type: ignore
-            return typ, cls  # type: ignore
+            cls = typ = import_module_and_get_attr(name=name)
+            return typ, cls
 
         if typ is not _SVC_DEFAULTS:  # type: ignore
             typ = import_module_and_get_attr(name=typ)  # type: ignore
@@ -198,7 +196,7 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
 
         if typ is _SVC_DEFAULTS:  # type: ignore
             try:
-                typ = import_module_and_get_attr(name=name)  # type: ignore
+                typ = import_module_and_get_attr(name=name)
             except Exception:
                 typ = cls
         if cls is _SVC_DEFAULTS:  # type: ignore
@@ -226,7 +224,7 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
             clazz=clazz,
             arguments=kwargs,
             params=[
-                ServiceMetadata.ParameterMetadata.from_param_inspected_and_args(param=param, arguments=kwargs)
+                ServiceMetadata.ParameterMetadata.from_param_inspected_and_args(param=param, arguments=kwargs)  # type: ignore
                 for param in signature(clazz).parameters.items()
             ],
             defaults=defaults,

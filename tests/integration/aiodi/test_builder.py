@@ -1,7 +1,7 @@
 from logging import Logger
 from pathlib import Path
 
-import pytest
+from pytest import mark
 
 from sample.apps.settings import container
 from sample.libs.users.application.finder_service import UserFinderService
@@ -13,7 +13,7 @@ from sample.libs.users.infrastructure.in_memory_user_repository import (
 )
 
 
-@pytest.mark.timeout(15)
+@mark.timeout(15)
 def test_container() -> None:
     di = container(filename='../../../sample/pyproject.toml', cwd=str(Path(__file__).parent.absolute()))
 
