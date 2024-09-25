@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, MutableMapping, Union
+from typing import Any, Callable, Dict, MutableMapping, Union, cast
 
 TOMLDecoded = Union[MutableMapping[str, Any], Dict[str, Any]]
 TOMLPath = Union[str, Path]
@@ -7,23 +7,23 @@ TOMLDecoder = Callable[[TOMLPath], TOMLDecoded]
 
 
 def _decoder_from_builtin_lib() -> TOMLDecoder:
-    from tomllib import load  # type: ignore
+    from tomllib import load
 
     def decorator(path: TOMLPath) -> TOMLDecoded:
         with open(path, 'rb') as file:
-            return load(file)  # type: ignore
+            return cast(TOMLDecoded, load(file))
 
     return decorator
 
 
 def _decoder_from_pytomlpp_lib() -> TOMLDecoder:
-    from pytomlpp import load  # type: ignore
+    from pytomlpp import load
 
     return load  # type: ignore
 
 
 def _decoder_from_rtoml_lib() -> TOMLDecoder:
-    from rtoml import load  # type: ignore
+    from rtoml import load
 
     def decorator(path: TOMLPath) -> TOMLDecoded:
         with open(path, 'r', encoding='utf-8') as file:
@@ -37,13 +37,13 @@ def _decoder_from_tomli_lib() -> TOMLDecoder:
 
     def decorator(path: TOMLPath) -> TOMLDecoded:
         with open(path, 'rb') as file:
-            return load(file)
+            return cast(TOMLDecoded, load(file))
 
     return decorator
 
 
 def _decoder_from_pytoml_lib() -> TOMLDecoder:
-    from pytoml import load  # type: ignore
+    from pytoml import load
 
     def decorator(path: TOMLPath) -> TOMLDecoded:
         with open(path, 'rb') as file:
@@ -59,7 +59,7 @@ def _decoder_from_toml_lib() -> TOMLDecoder:
 
 
 def _decoder_from_qtoml_lib() -> TOMLDecoder:
-    from qtoml import load  # type: ignore
+    from qtoml import load
 
     def decorator(path: TOMLPath) -> TOMLDecoded:
         with open(path, 'r', encoding='utf-8') as file:

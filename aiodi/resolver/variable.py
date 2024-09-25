@@ -70,7 +70,7 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
             name=key,
             value=val,
             matches=[
-                VariableMetadata.MatchMetadata.from_match(match=match)
+                VariableMetadata.MatchMetadata.from_match(match=match)  # type: ignore
                 for match in self._metadata_matches(key=key, val=val)
             ],
         )
@@ -93,7 +93,7 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
                 if typ_val is None:
                     # can only concatenate str to str
                     return typ_val
-                if metadata_.default is _VAR_DEFAULTS and typ_val == metadata_.default:
+                if metadata_.default is _VAR_DEFAULTS and typ_val == metadata_.default:  # type: ignore
                     raise EnvironmentVariableNotFound(name=metadata_.source_name)
             elif metadata_.source_kind == 'var':
                 if metadata_.source_name not in _variables:

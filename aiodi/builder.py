@@ -32,7 +32,7 @@ class ContainerBuilder:
         debug: bool = False,
         tool_key: str = 'aiodi',
         var_key: str = 'env',  # Container retro-compatibility
-        toml_decoder: Optional[TOMLDecoder] = None
+        toml_decoder: Optional[TOMLDecoder] = None,
     ) -> None:
         self._filenames = (
             [
@@ -55,7 +55,7 @@ class ContainerBuilder:
             'variable': VariableResolver(),
         }
         self._decoders = {
-            'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),  # type: ignore
+            'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),
         }
 
         def map_items(items: Dict[str, Dict[str, Any]]) -> List[Tuple[str, Any, Dict[str, Any]]]:
@@ -67,7 +67,7 @@ class ContainerBuilder:
                 }.items()
             ]
 
-        self._map_items = map_items  # type: ignore
+        self._map_items = map_items
 
     def load(self) -> Container:
         extra: Dict[str, Any] = {

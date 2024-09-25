@@ -47,7 +47,7 @@ class Container(Dict[Any, Any]):
         return len(self._parameter_resolvers) - 1, fn
 
     def resolve(self, items: List[Union[ContainerKey, Tuple[ContainerKey, _T, Dict[str, Any]]]]) -> None:
-        items_ = list(map(self._sanitize_item_before_resolve, items))
+        items_: List[Any] = list(map(self._sanitize_item_before_resolve, items))
         while items_:
             for index, item in enumerate(items_):
                 # Check if already exist
@@ -68,7 +68,7 @@ class Container(Dict[Any, Any]):
                 if kwargs is not None:
                     if self.debug:
                         logger.debug('Resolving {0}'.format(item[1]))
-                    inst = item[1](**kwargs)  # type: ignore
+                    inst = item[1](**kwargs)
                     if self.debug:
                         logger.debug('Adding {0} - {1}'.format(item[0], item[1]))
                     self.set(item[0], inst)
@@ -162,7 +162,7 @@ class Container(Dict[Any, Any]):
         if length == 2:
             return item[0], item[1], {}
         if length >= 3:
-            return item[:3]  # type: ignore
+            return item[:3]
         raise ValueError('Tuple must be at least of one item')
 
     def _resolve_or_postpone_item(
