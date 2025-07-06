@@ -167,7 +167,7 @@ if __name__ == '__main__':
 
 ## Requirements
 
-- Python >= 3.9
+- Python >= 3.10
 
 ## Contributing
 

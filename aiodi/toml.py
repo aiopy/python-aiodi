@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, MutableMapping, Union, cast
+from typing import Any, Callable, MutableMapping, cast
 
-TOMLDecoded = Union[MutableMapping[str, Any], Dict[str, Any]]
-TOMLPath = Union[str, Path]
+TOMLDecoded = MutableMapping[str, Any] | dict[str, Any]
+TOMLPath = str | Path
 TOMLDecoder = Callable[[TOMLPath], TOMLDecoded]
 
 

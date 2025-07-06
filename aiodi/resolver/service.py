@@ -2,7 +2,7 @@ from abc import ABC
 from glob import glob
 from inspect import Parameter, signature
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, cast
+from typing import Any, NamedTuple, Optional, Type, cast
 
 from ..helpers import (
     import_module_and_get_attr,
@@ -21,7 +21,7 @@ class ServiceDefaults(NamedTuple):
     project_dir: str = ''
     autowire: bool = True
     autoconfigure: bool = True
-    autoregistration: Dict[str, Optional[str]] = {
+    autoregistration: dict[str, Optional[str]] = {
         'resource': None,
         'exclude': None,
     }
@@ -37,7 +37,7 @@ class ServiceDefaults(NamedTuple):
             return False
         return True
 
-    def compute_resources(self) -> List[str]:
+    def compute_resources(self) -> list[str]:
         resources = [self.resource()]
         if not resources[0]:
             return []
@@ -51,7 +51,7 @@ class ServiceDefaults(NamedTuple):
 
         return resources
 
-    def compute_excludes(self) -> List[str]:
+    def compute_excludes(self) -> list[str]:
         raw_exclude: str = self.exclude()
 
         if not raw_exclude:
@@ -66,16 +66,16 @@ class ServiceDefaults(NamedTuple):
         left = self.project_dir if exclude_groups[0] is None else self.project_dir + '/' + exclude_groups[0]
         left = '/'.join(list(Path(str(Path(left).absolute()).replace('../', '')).parts[-len(Path(left).parts) :]))[1:]
 
-        rights: List[str] = []
+        rights: list[str] = []
         for right in ('{}' if exclude_groups[1] is None else exclude_groups[1])[1:-1].split(','):
             rights += glob(left + '/' + right)
 
         return [left] if len(rights) == 0 else rights
 
     def compute_services(
-        self, resolver: Resolver[Any, Any], resources: List[str], excludes: List[str], extra: Dict[str, Any]
-    ) -> Dict[str, Tuple['ServiceMetadata', int]]:
-        names: List[str] = []
+        self, resolver: Resolver[Any, Any], resources: list[str], excludes: list[str], extra: dict[str, Any]
+    ) -> dict[str, tuple['ServiceMetadata', int]]:
+        names: list[str] = []
         for include in resources:
             names += [
                 name
@@ -83,7 +83,7 @@ class ServiceDefaults(NamedTuple):
                 if hasattr(mod, '__mro__') and not mod.__mro__[1:][0] is ABC  # avoid loading interfaces
             ]
 
-        services: Dict[str, Tuple['ServiceMetadata', int]] = {}
+        services: dict[str, tuple['ServiceMetadata', int]] = {}
         for name in set(names):
             services[name] = (
                 resolver.extract_metadata(
@@ -135,8 +135,8 @@ class ServiceMetadata(NamedTuple):
     name: str
     type: Type[Any]
     clazz: Type[Any]
-    arguments: Dict[str, Any]
-    params: List[Any]
+    arguments: dict[str, Any]
+    params: list[Any]
     defaults: ServiceDefaults
 
     class ParameterMetadata(NamedTuple):  # type: ignore
@@ -147,7 +147,7 @@ class ServiceMetadata(NamedTuple):
 
         @classmethod
         def from_param_inspected_and_args(
-            cls, param: Tuple[str, Parameter], arguments: Dict[str, Any]
+                cls, param: tuple[str, Parameter], arguments: dict[str, Any]
         ) -> 'ServiceMetadata.ParameterMetadata':
             return cls(
                 name=str(param[0]),
@@ -184,7 +184,7 @@ class ServiceResolutionPostponed(ValueResolutionPostponed[ServiceMetadata]):
 
 class ServiceResolver(Resolver[ServiceMetadata, Any]):
     @staticmethod
-    def _define_service_type(name: str, typ: str, cls: str) -> Tuple[Type[Any], Type[Any]]:
+    def _define_service_type(name: str, typ: str, cls: str) -> tuple[Type[Any], Type[Any]]:
         if typ is _SVC_DEFAULTS and cls is _SVC_DEFAULTS:  # type: ignore
             cls = typ = import_module_and_get_attr(name=name)
             return typ, cls
@@ -207,7 +207,7 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
 
         return typ, cls  # type: ignore
 
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any]) -> ServiceMetadata:  # pylint: disable=W0613
+    def extract_metadata(self, data: dict[str, Any], extra: dict[str, Any]) -> ServiceMetadata:  # pylint: disable=W0613
         key = cast(str, data.get('key'))
         val = data.get('val')
         defaults = cast(ServiceDefaults, data.get('defaults'))
@@ -230,12 +230,12 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
             defaults=defaults,
         )
 
-    def parse_value(self, metadata: ServiceMetadata, retries: int, extra: Dict[str, Any]) -> Any:
-        _variables = cast(Dict[str, Any], extra.get('variables'))
-        _services = cast(Dict[str, Any], extra.get('services'))
+    def parse_value(self, metadata: ServiceMetadata, retries: int, extra: dict[str, Any]) -> Any:
+        _variables = cast(dict[str, Any], extra.get('variables'))
+        _services = cast(dict[str, Any], extra.get('services'))
         variable_resolver = cast(Resolver[Any, Any], extra.get('resolvers', {}).get('variable'))
 
-        parameters: Dict[str, Any] = {}
+        parameters: dict[str, Any] = {}
         for param in metadata.params:
             param_val = param.default
             # extract raw value
@@ -276,11 +276,11 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
 
 
 def prepare_services_to_parse(
-    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]
-) -> Dict[str, Tuple['ServiceMetadata', int]]:
+    resolver: Resolver[Any, Any], items: dict[str, Any], extra: dict[str, Any]
+) -> dict[str, tuple['ServiceMetadata', int]]:
     _service_defaults = cast(ServiceDefaults, extra.get('_service_defaults'))
 
-    services: Dict[str, Tuple['ServiceMetadata', int]] = {}
+    services: dict[str, tuple['ServiceMetadata', int]] = {}
     for key, val in items.items():
         defaults = ServiceDefaults.from_value(val=val, defaults=_service_defaults)
         if defaults.has_resources():

@@ -1,6 +1,6 @@
 from pathlib import Path
 from random import shuffle
-from typing import Any, Callable, Dict, List, MutableMapping, Optional, Tuple, Union
+from typing import Any, Callable, MutableMapping
 
 from .container import Container
 from .logger import logger
@@ -17,22 +17,22 @@ from .toml import TOMLDecoder, lazy_toml_decoder
 
 
 class ContainerBuilder:
-    _filenames: List[str]
-    _cwd: Optional[str]
+    _filenames: list[str]
+    _cwd: str | None
     _debug: bool
-    _resolvers: Dict[str, Resolver[Any, Any]]
-    _decoders: Dict[str, Callable[[Union[str, Path]], Union[MutableMapping[str, Any], Dict[str, Any]]]]
-    _map_items: Callable[[Dict[str, Dict[str, Any]]], List[Tuple[str, Any, Dict[str, Any]]]]
+    _resolvers: dict[str, Resolver[Any, Any]]
+    _decoders: dict[str, Callable[[str | Path], MutableMapping[str, Any] | dict[str, Any]]]
+    _map_items: Callable[[dict[str, dict[str, Any]]], list[tuple[str, Any, dict[str, Any]]]]
 
     def __init__(
         self,
-        filenames: Optional[List[str]] = None,
-        cwd: Optional[str] = None,
+        filenames: list[str] | None = None,
+        cwd: str | None = None,
         *,
         debug: bool = False,
         tool_key: str = 'aiodi',
         var_key: str = 'env',  # Container retro-compatibility
-        toml_decoder: Optional[TOMLDecoder] = None,
+        toml_decoder: TOMLDecoder | None = None,
     ) -> None:
         self._filenames = (
             [
@@ -58,7 +58,7 @@ class ContainerBuilder:
             'toml': lambda path: (toml_decoder or lazy_toml_decoder())(path).get('tool', {}).get(tool_key, {}),
         }
 
-        def map_items(items: Dict[str, Dict[str, Any]]) -> List[Tuple[str, Any, Dict[str, Any]]]:
+        def map_items(items: dict[str, dict[str, Any]]) -> list[tuple[str, Any, dict[str, Any]]]:
             return [
                 (key, val, {})
                 for key, val in {
@@ -70,7 +70,7 @@ class ContainerBuilder:
         self._map_items = map_items
 
     def load(self) -> Container:
-        extra: Dict[str, Any] = {
+        extra: dict[str, Any] = {
             'path_data': {},
             'data': {},
             '_service_defaults': ServiceDefaults(),
@@ -125,9 +125,9 @@ class ContainerBuilder:
     def _parse_values(
         self,
         resolver: Resolver[Any, Any],
-        storage: Dict[str, Any],
-        extra: Dict[str, Any],
-        items: Dict[str, Any],
+        storage: dict[str, Any],
+        extra: dict[str, Any],
+        items: dict[str, Any],
     ) -> None:
         limit_retries = pow(len(items.keys()), 3)
         while len(items.keys()) > 0:

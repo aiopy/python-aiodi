@@ -4,9 +4,7 @@ from typing import (
     Any,
     Callable,
     Dict,
-    List,
     Optional,
-    Tuple,
     Type,
     TypeVar,
     Union,
@@ -18,18 +16,18 @@ from .logger import logger
 
 _T = TypeVar('_T')
 
-ContainerKey = Union[str, Type[Any], object]
+ContainerKey = str | Type[Any] | object
 
 
 class Container(Dict[Any, Any]):
     debug: bool = False
-    _parameter_resolvers: List[Callable[['Container'], Any]] = []
+    _parameter_resolvers: list[Callable[['Container'], Any]] = []
 
     def __init__(
         self,
         items: Optional[
             Union[
-                Dict[str, Any], List[Union[ContainerKey, Tuple[ContainerKey, _T, Dict[str, Any]]]]  # hardcoded
+                dict[str, Any], list[Union[ContainerKey, tuple[ContainerKey, _T, dict[str, Any]]]]  # hardcoded
             ]  # magic
         ] = None,
         debug: bool = False,
@@ -42,12 +40,12 @@ class Container(Dict[Any, Any]):
             super(Container, self).__init__({})
             self.resolve(items)
 
-    def resolve_parameter(self, fn: Callable[['Container'], Any]) -> Tuple[int, Callable[['Container'], Any]]:
+    def resolve_parameter(self, fn: Callable[['Container'], Any]) -> tuple[int, Callable[['Container'], Any]]:
         self._parameter_resolvers.append(fn)
         return len(self._parameter_resolvers) - 1, fn
 
-    def resolve(self, items: List[Union[ContainerKey, Tuple[ContainerKey, _T, Dict[str, Any]]]]) -> None:
-        items_: List[Any] = list(map(self._sanitize_item_before_resolve, items))
+    def resolve(self, items: list[Union[ContainerKey, tuple[ContainerKey, _T, dict[str, Any]]]]) -> None:
+        items_: list[Any] = list(map(self._sanitize_item_before_resolve, items))
         while items_:
             for index, item in enumerate(items_):
                 # Check if already exist
@@ -96,7 +94,7 @@ class Container(Dict[Any, Any]):
             here = here.setdefault(key, {})
         here[keys[-1]] = val
 
-    def get(self, key: ContainerKey, typ: Optional[Type[_T]] = None, instance_of: bool = False) -> _T:  # type: ignore
+    def get(self, key: ContainerKey, typ: Type[_T] | None = None, instance_of: bool = False) -> _T:  # type: ignore
         """
         e.g. 1
         container = Container({'config': {'version': '0.1.0'}, 'app.libs.MyClass': '...'})
@@ -152,8 +150,8 @@ class Container(Dict[Any, Any]):
 
     @staticmethod
     def _sanitize_item_before_resolve(
-        item: Union[ContainerKey, Tuple[ContainerKey, _T, Dict[str, Any]]]
-    ) -> Tuple[ContainerKey, _T, Dict[str, Any]]:
+        item: Union[ContainerKey, tuple[ContainerKey, _T, dict[str, Any]]]
+    ) -> tuple[ContainerKey, _T, dict[str, Any]]:
         if not isinstance(item, tuple):
             return item, item, {}  # type: ignore
         length = len(item)
@@ -163,15 +161,15 @@ class Container(Dict[Any, Any]):
             return item[0], item[1], {}
         if length >= 3:
             return item[:3]
-        raise ValueError('Tuple must be at least of one item')
+        raise ValueError('tuple must be at least of one item')
 
     def _resolve_or_postpone_item(
         self,
-        item: Tuple[ContainerKey, _T, Dict[str, Any]],
-        items: List[Tuple[ContainerKey, _T, Dict[str, Any]]],
-    ) -> Optional[Dict[str, Any]]:
+        item: tuple[ContainerKey, _T, dict[str, Any]],
+        items: list[tuple[ContainerKey, _T, dict[str, Any]]],
+    ) -> dict[str, Any] | None:
         parameters = signature(item[1]).parameters.items()  # type: ignore
-        kwargs: Dict[str, Any] = {}
+        kwargs: dict[str, Any] = {}
         item[2].update(self._sanitize_item_parameters_before_resolve_or_postpone(parameters, item[2]))
         for parameter in parameters:
             name: str = parameter[0]
@@ -208,7 +206,7 @@ class Container(Dict[Any, Any]):
         return None
 
     @classmethod
-    def _get_instance_of(cls, items: Dict[str, Any], typ: Type[Any]) -> List[Any]:
+    def _get_instance_of(cls, items: dict[str, Any], typ: Type[Any]) -> list[Any]:
         instances = []
         for _, val in items.items():
             if isinstance(val, typ):
@@ -224,7 +222,7 @@ class Container(Dict[Any, Any]):
         self,
         name: str,
         typ: Type[Any],
-        item: Tuple[ContainerKey, _T, Dict[str, Any]],
+        item: tuple[ContainerKey, _T, dict[str, Any]],
     ) -> Any:
         if name not in item[2]:
             return None
@@ -245,8 +243,8 @@ class Container(Dict[Any, Any]):
 
     @staticmethod
     def _sanitize_item_parameters_before_resolve_or_postpone(
-        meta_params: AbstractSet[Any], params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        meta_params: AbstractSet[Any], params: dict[str, Any]
+    ) -> dict[str, Any]:
         for meta_param in meta_params:
             name: str = meta_param[0]
             typ: Type[Any] = meta_param[1].annotation

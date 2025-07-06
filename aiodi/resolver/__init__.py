@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, NamedTuple, TypeVar
+from typing import Any, Generic, NamedTuple, TypeVar
 
 Metadata = TypeVar('Metadata', bound=NamedTuple)
 Value = TypeVar('Value', bound=Any)
@@ -43,7 +43,7 @@ class ValueResolutionPostponed(Exception, Generic[Metadata]):
 
 class Resolver(ABC, Generic[Metadata, Value]):
     @abstractmethod
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any]) -> Metadata:
+    def extract_metadata(self, data: dict[str, Any], extra: dict[str, Any]) -> Metadata:
         """
         Extract metadata from data
 
@@ -53,7 +53,7 @@ class Resolver(ABC, Generic[Metadata, Value]):
         """
 
     @abstractmethod
-    def parse_value(self, metadata: Metadata, retries: int, extra: Dict[str, Any]) -> Value:
+    def parse_value(self, metadata: Metadata, retries: int, extra: dict[str, Any]) -> Value:
         """
         Parse value from metadata
 

@@ -1,5 +1,5 @@
 from os import getenv
-from typing import Any, Dict, List, Match, NamedTuple, Tuple, Type
+from typing import Any, Match, NamedTuple, Type
 
 from ..helpers import raise_, re_finditer
 from . import Resolver, ValueNotFound, ValueResolutionPostponed
@@ -12,11 +12,11 @@ _VAR_DEFAULTS = ...
 class VariableMetadata(NamedTuple):
     name: str
     value: Any
-    matches: List['VariableMetadata.MatchMetadata']  # type: ignore
+    matches: list['VariableMetadata.MatchMetadata']  # type: ignore
 
     class MatchMetadata(NamedTuple):  # type: ignore
         source_kind: str
-        types: List[Type[Any]]
+        types: list[Type[Any]]
         source_name: str
         default: Any
         match: Match[Any]
@@ -54,14 +54,14 @@ class VariableResolutionPostponed(ValueResolutionPostponed[VariableMetadata]):
 
 class VariableResolver(Resolver[VariableMetadata, Any]):
     @staticmethod
-    def _metadata_matches(key: str, val: Any) -> List[Match[Any]]:
-        def __call__(string: Any) -> List[Match[Any]]:
+    def _metadata_matches(key: str, val: Any) -> list[Match[Any]]:
+        def __call__(string: Any) -> list[Match[Any]]:
             return re_finditer(pattern=REGEX, string=string)
 
         return __call__(string=val) or __call__(string=STATIC_TEMPLATE.format(type(val).__name__, key, val))
 
     def extract_metadata(
-        self, data: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
+        self, data: dict[str, Any], extra: dict[str, Any]  # pylint: disable=W0613
     ) -> VariableMetadata:
         key: str = data.get('key') or raise_(KeyError('Missing key "key" to extract variable metadata'))  # type: ignore
         val: Any = data.get('val') or raise_(KeyError('Missing key "val" to extract variable metadata'))
@@ -76,14 +76,14 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
         )
 
     def parse_value(
-        self, metadata: VariableMetadata, retries: int, extra: Dict[str, Any]  # pylint: disable=W0613
+        self, metadata: VariableMetadata, retries: int, extra: dict[str, Any]  # pylint: disable=W0613
     ) -> Any:
         extra = {} if extra is None or not isinstance(extra, dict) else extra
         _variables: Dict[str, Any] = extra.get('variables')  # type: ignore
         if _variables is None:
             raise KeyError('Missing key "variables" to parse variable value')
 
-        values: List[str] = []
+        values: list[str] = []
         for idx, metadata_ in enumerate(metadata.matches):
             typ_val: str = ''
             if metadata_.source_kind == 'static':
@@ -118,8 +118,8 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
 
 
 def prepare_variables_to_parse(
-    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
-) -> Dict[str, Tuple[VariableMetadata, int]]:
+    resolver: Resolver[Any, Any], items: dict[str, Any], extra: dict[str, Any]  # pylint: disable=W0613
+) -> dict[str, tuple[VariableMetadata, int]]:
     return dict(
         [
             (key, (resolver.extract_metadata(data={'key': key, 'val': val}, extra=extra), 0))

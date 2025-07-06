@@ -1,14 +1,14 @@
 from os.path import abspath, dirname
 from pathlib import Path
 from sys import executable, modules
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional
 
 from . import Resolver
 
 
 class PathMetadata(NamedTuple):
     cwd: Optional[str]
-    filenames: List[str]
+    filenames: list[str]
 
     def compute_cwd(self) -> Path:
         if self.cwd:
@@ -19,8 +19,8 @@ class PathMetadata(NamedTuple):
             main_file = executable
         return Path(dirname(main_file))  # type: ignore
 
-    def compute_filepaths(self, cwd: Path) -> List[Path]:
-        filepaths: List[Path] = []
+    def compute_filepaths(self, cwd: Path) -> list[Path]:
+        filepaths: list[Path] = []
         for filename in self.filenames:
             parts_to_remove = len(([part for part in Path(filename).parts if part == '..']))
             filename_ = '/'.join(
@@ -37,7 +37,7 @@ class PathMetadata(NamedTuple):
 
 class PathData(NamedTuple):
     cwd: Path
-    filepaths: List[Path]
+    filepaths: list[Path]
 
     @classmethod
     def from_metadata(cls, metadata: PathMetadata) -> 'PathData':
@@ -47,21 +47,21 @@ class PathData(NamedTuple):
 
 
 class PathResolver(Resolver[PathMetadata, PathData]):
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any]) -> PathMetadata:  # pylint: disable=W0613
+    def extract_metadata(self, data: dict[str, Any], extra: dict[str, Any]) -> PathMetadata:  # pylint: disable=W0613
         return PathMetadata(cwd=data.get('cwd', None), filenames=data.get('filenames', []))
 
     def parse_value(
         self,
         metadata: PathMetadata,
         retries: int,  # pylint: disable=W0613
-        extra: Dict[str, Any],  # pylint: disable=W0613
+        extra: dict[str, Any],  # pylint: disable=W0613
     ) -> PathData:
         return PathData.from_metadata(metadata)
 
 
 def prepare_path_to_parse(
-    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
-) -> Dict[str, Tuple[PathMetadata, int]]:
+    resolver: Resolver[Any, Any], items: dict[str, Any], extra: dict[str, Any]  # pylint: disable=W0613
+) -> dict[str, tuple[PathMetadata, int]]:
     return {
         'value': (resolver.extract_metadata(data=items, extra=extra), 0),
     }

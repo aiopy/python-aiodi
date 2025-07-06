@@ -1,17 +1,17 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, MutableMapping, NamedTuple, Tuple, Union
+from typing import Any, Callable, MutableMapping, NamedTuple
 
 from . import Resolver
 from .path import PathData
 from .service import ServiceDefaults
 
-InputData = Union[str, Path]
-OutputData = Union[MutableMapping[str, Any], Dict[str, Any]]
+InputData = str | Path
+OutputData = MutableMapping[str, Any] | dict[str, Any]
 
 
 class LoaderMetadata(NamedTuple):
     path_data: PathData
-    decoders: Dict[str, Callable[[InputData], OutputData]]
+    decoders: dict[str, Callable[[InputData], OutputData]]
 
     def decode(self) -> OutputData:
         for filepath in self.path_data.filepaths:
@@ -29,8 +29,8 @@ class LoaderMetadata(NamedTuple):
 
 
 class LoadData(NamedTuple):
-    variables: Dict[str, Any]
-    services: Dict[str, Any]
+    variables: dict[str, Any]
+    services: dict[str, Any]
     service_defaults: ServiceDefaults
 
     @classmethod
@@ -62,7 +62,7 @@ class LoadData(NamedTuple):
 
 
 class LoaderResolver(Resolver[LoaderMetadata, LoadData]):
-    def extract_metadata(self, data: Dict[str, Any], extra: Dict[str, Any]) -> LoaderMetadata:  # pylint: disable=W0613
+    def extract_metadata(self, data: dict[str, Any], extra: dict[str, Any]) -> LoaderMetadata:  # pylint: disable=W0613
         return LoaderMetadata(
             path_data=data['path_data'],
             decoders=data['decoders'],
@@ -72,14 +72,14 @@ class LoaderResolver(Resolver[LoaderMetadata, LoadData]):
         self,
         metadata: LoaderMetadata,
         retries: int,  # pylint: disable=W0613
-        extra: Dict[str, Any],  # pylint: disable=W0613
+        extra: dict[str, Any],  # pylint: disable=W0613
     ) -> LoadData:
         return LoadData.from_metadata(metadata=metadata, data=metadata.decode())
 
 
 def prepare_loader_to_parse(
-    resolver: Resolver[Any, Any], items: Dict[str, Any], extra: Dict[str, Any]  # pylint: disable=W0613
-) -> Dict[str, Tuple[LoaderMetadata, int]]:
+    resolver: Resolver[Any, Any], items: dict[str, Any], extra: dict[str, Any]  # pylint: disable=W0613
+) -> dict[str, tuple[LoaderMetadata, int]]:
     return {
         'value': (resolver.extract_metadata(data=items, extra=extra), 0),
     }
