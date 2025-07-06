@@ -31,7 +31,7 @@ extra:
     - link: /es/
       name: es - Español
   generator: false
-copyright: Copyright &copy; 2022
+copyright: Copyright &copy; 2022 - 2025
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences

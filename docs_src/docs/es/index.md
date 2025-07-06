@@ -10,7 +10,7 @@ Funcionalidades clave:
 
 ## Requisitos
 
-- Python 3.9+
+- Python 3.10+
 
 ## Instalación
 
