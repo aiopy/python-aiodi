@@ -79,7 +79,7 @@ class VariableResolver(Resolver[VariableMetadata, Any]):
         self, metadata: VariableMetadata, retries: int, extra: dict[str, Any]  # pylint: disable=W0613
     ) -> Any:
         extra = {} if extra is None or not isinstance(extra, dict) else extra
-        _variables: Dict[str, Any] = extra.get('variables')  # type: ignore
+        _variables: dict[str, Any] = extra.get('variables')  # type: ignore
         if _variables is None:
             raise KeyError('Missing key "variables" to parse variable value')
 

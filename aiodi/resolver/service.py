@@ -2,7 +2,7 @@ from abc import ABC
 from glob import glob
 from inspect import Parameter, signature
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, Type, cast
+from typing import Any, NamedTuple, Type, cast
 
 from ..helpers import (
     import_module_and_get_attr,
@@ -21,7 +21,7 @@ class ServiceDefaults(NamedTuple):
     project_dir: str = ''
     autowire: bool = True
     autoconfigure: bool = True
-    autoregistration: dict[str, Optional[str]] = {
+    autoregistration: dict[str,  str | None] = {
         'resource': None,
         'exclude': None,
     }
@@ -108,7 +108,7 @@ class ServiceDefaults(NamedTuple):
         return services
 
     @classmethod
-    def from_value(cls, val: Any, defaults: Optional['ServiceDefaults'] = None) -> 'ServiceDefaults':
+    def from_value(cls, val: Any, defaults: Any = None) -> 'ServiceDefaults':
         if not defaults:
             defaults = cls()
         has_defaults = isinstance(val, dict) and '_defaults' in val
@@ -214,8 +214,8 @@ class ServiceResolver(Resolver[ServiceMetadata, Any]):
 
         typ, clazz = self._define_service_type(
             name=key,
-            typ=val['type'] if isinstance(val, dict) and 'type' in val else _SVC_DEFAULTS,
-            cls=val['class'] if isinstance(val, dict) and 'class' in val else _SVC_DEFAULTS,
+            typ=val['type'] if isinstance(val, dict) and 'type' in val else _SVC_DEFAULTS,  # type: ignore
+            cls=val['class'] if isinstance(val, dict) and 'class' in val else _SVC_DEFAULTS,  # type: ignore
         )
         kwargs = val['arguments'] if isinstance(val, dict) and 'arguments' in val else {}
         return ServiceMetadata(
